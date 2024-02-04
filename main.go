@@ -6,17 +6,15 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
-	"github.com/gorilla/sessions"
 	_ "github.com/mattn/go-sqlite3" // Import SQLite driver
 	"golang.org/x/crypto/bcrypt"
 )
 
 var db *sql.DB
-var store = sessions.NewCookieStore([]byte("your-secret-key"))
 
 // Post structure
 type Post struct {
@@ -47,40 +45,24 @@ func main() {
 	initDB()
 
 	// Create routes
-	r := mux.NewRouter()
-
-	// Apply authMiddleware to routes that require authentication
-	authenticatedRouter := r.PathPrefix("/").Subrouter()
-	authenticatedRouter.Use(authMiddleware)
-	authenticatedRouter.HandleFunc("/create-post", createPostHandler).Methods("POST")
-
-	// Other routes
-	r.HandleFunc("/", homeHandler).Methods("GET")
-	r.HandleFunc("/register", registerHandler).Methods("POST")
-	r.HandleFunc("/login", loginHandler).Methods("POST")
-	r.HandleFunc("/logout", logoutHandler).Methods("GET")
-	r.HandleFunc("/post/{id}", viewPostHandler).Methods("GET")
-	r.HandleFunc("/like/{id}", likePostHandler).Methods("POST")
-	r.HandleFunc("/dislike/{id}", dislikePostHandler).Methods("POST")
+	http.HandleFunc("/", homeHandler)
+	http.HandleFunc("/register", registerHandler)
+	http.HandleFunc("/login", loginHandler)
+	http.HandleFunc("/logout", logoutHandler)
+	http.HandleFunc("/post/", viewPostHandler)
+	http.HandleFunc("/like/", likePostHandler)
+	http.HandleFunc("/dislike/", dislikePostHandler)
+	http.HandleFunc("/create-post", createPostHandler)
 
 	// Start the server
-	log.Fatal(http.ListenAndServe(":8080", r))
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-// authMiddleware is a middleware that checks if the user is authenticated
 func authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Retrieve the session
-		session, err := store.Get(r, "forum-session")
-		if err != nil {
-			log.Println(err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		// Check if the user is authenticated
-		userID, ok := session.Values["userID"].(string)
-		if !ok || userID == "" {
+		// Retrieve user ID from the cookie
+		cookie, err := r.Cookie("forum-session")
+		if err != nil || cookie.Value == "" {
 			// User is not authenticated, redirect to login page
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
@@ -135,6 +117,17 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Create a new session ID
+	sessionID := uuid.New().String()
+
+	// Set the session ID in a cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:    "forum-session",
+		Value:   sessionID,
+		Expires: time.Now().Add(24 * time.Hour), // Set expiration time
+		Path:    "/",
+	})
+
 	// Redirect to the home page or login page
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
@@ -180,41 +173,29 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create a new session
-	session, err := store.Get(r, "forum-session")
-	if err != nil {
-		log.Println(err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	// Create a new session ID
+	sessionID := uuid.New().String()
 
-	// Set user ID in the session
-	session.Values["userID"] = userID
-
-	// Save the session
-	err = session.Save(r, w)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	// Set the session ID in a cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:    "forum-session",
+		Value:   sessionID,
+		Expires: time.Now().Add(24 * time.Hour), // Set expiration time
+		Path:    "/",
+	})
 
 	// Redirect to the home page or user-specific page
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
-	// Delete the session
-	session, err := store.Get(r, "forum-session")
-	if err == nil {
-		session.Options.MaxAge = -1
-		err = session.Save(r, w)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-	}
+	// Expire the cookie to delete the session
+	http.SetCookie(w, &http.Cookie{
+		Name:    "forum-session",
+		Value:   "",
+		Expires: time.Now(),
+		Path:    "/",
+	})
 
 	// Redirect to the home page or login page
 	http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -280,32 +261,24 @@ func initDB() {
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if the user is logged in
-	session, err := store.Get(r, "forum-session")
-	if err != nil {
-		log.Println(err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	cookie, err := r.Cookie("forum-session")
+	if err != nil || cookie.Value == "" {
+		// User is not logged in, display login and registration options
+		tmpl, err := template.ParseFiles("templates/login.html")
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		tmpl.Execute(w, nil)
 		return
 	}
+	// User is logged in, display post creation form or other user-specific content
+	// ...
 
-	// Check if the user is logged in
-	userID, ok := session.Values["userID"].(string)
-	if ok && userID != "" {
-		// User is logged in, display post creation form or other user-specific content
-		// ...
-
-		// For now, let's redirect to the post creation form
-		http.Redirect(w, r, "/create-post", http.StatusSeeOther)
-		return
-	}
-
-	// User is not logged in, display login and registration options
-	tmpl, err := template.ParseFiles("templates/login.html")
-	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	tmpl.Execute(w, nil)
+	// For now, let's redirect to the post creation form
+	http.Redirect(w, r, "/create-post", http.StatusSeeOther)
+	return
 }
 
 func createPostHandler(w http.ResponseWriter, r *http.Request) {
@@ -344,8 +317,7 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 
 func viewPostHandler(w http.ResponseWriter, r *http.Request) {
 	// Retrieve post ID from the URL
-	vars := mux.Vars(r)
-	postID := vars["id"]
+	postID := extractPostID(r.URL.Path)
 
 	// Retrieve post details from the database
 	post, err := getPostByID(postID)
@@ -366,8 +338,7 @@ func viewPostHandler(w http.ResponseWriter, r *http.Request) {
 
 func likePostHandler(w http.ResponseWriter, r *http.Request) {
 	// Retrieve post ID from the URL
-	vars := mux.Vars(r)
-	postID := vars["id"]
+	postID := extractPostID(r.URL.Path)
 
 	// Implement the logic to increment the like count in the database
 	// (you may need a separate table to store likes and dislikes)
@@ -378,14 +349,23 @@ func likePostHandler(w http.ResponseWriter, r *http.Request) {
 
 func dislikePostHandler(w http.ResponseWriter, r *http.Request) {
 	// Retrieve post ID from the URL
-	vars := mux.Vars(r)
-	postID := vars["id"]
+	postID := extractPostID(r.URL.Path)
 
 	// Implement the logic to increment the dislike count in the database
 	// (you may need a separate table to store likes and dislikes)
 
 	// Redirect back to the post page
 	http.Redirect(w, r, fmt.Sprintf("/post/%s", postID), http.StatusSeeOther)
+}
+
+// extractPostID extracts the post ID from the URL path
+func extractPostID(path string) string {
+	// Assuming the URL path is in the format "/post/{id}" or "/like/{id}" or "/dislike/{id}"
+	parts := strings.Split(path, "/")
+	if len(parts) >= 3 {
+		return parts[2]
+	}
+	return ""
 }
 
 func getPosts() ([]Post, error) {
