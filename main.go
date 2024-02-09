@@ -58,6 +58,54 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
+func initDB() {
+	var err error
+	db, err = sql.Open("sqlite3", "./forum.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Create posts table
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS posts (
+			id TEXT PRIMARY KEY,
+			title TEXT,
+			content TEXT,
+			category TEXT,
+			created_at TIMESTAMP
+		)
+	`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Create users table
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS users (
+			id TEXT PRIMARY KEY,
+			email TEXT,
+			username TEXT,
+			password TEXT
+		)
+	`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Create comments table
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS comments (
+			id TEXT PRIMARY KEY,
+			post_id TEXT,
+			content TEXT,
+			created_at TIMESTAMP
+		)
+	`)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Retrieve user ID from the cookie
@@ -74,22 +122,33 @@ func authMiddleware(next http.Handler) http.Handler {
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Register handler received a request")
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	// Parse form data
-	err := r.ParseForm()
+	err := r.ParseMultipartForm(10 << 20) // Adjust the value based on your form size
 	if err != nil {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
 
+	fmt.Println("Form values:", r.Form)
+
 	// Retrieve form data
-	email := r.Form.Get("email")
-	username := r.Form.Get("username")
-	password := r.Form.Get("password")
+	email := r.FormValue("email")
+	username := r.FormValue("username")
+	password := r.FormValue("password")
+
+	fmt.Printf("Received data - Email: %s, Username: %s, Password: %s\n", email, username, password)
+
+	// Check if email is empty
+	if email == "" {
+		http.Error(w, "Email cannot be empty", http.StatusBadRequest)
+		return
+	}
 
 	// Check if email is already taken
 	if emailExists(email) {
@@ -209,54 +268,6 @@ func emailExists(email string) bool {
 		return true // Assume email exists in case of an error
 	}
 	return count > 0
-}
-
-func initDB() {
-	var err error
-	db, err = sql.Open("sqlite3", "./forum.db")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Create posts table
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS posts (
-			id TEXT PRIMARY KEY,
-			title TEXT,
-			content TEXT,
-			category TEXT,
-			created_at TIMESTAMP
-		)
-	`)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Create users table
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS users (
-			id TEXT PRIMARY KEY,
-			email TEXT,
-			username TEXT,
-			password TEXT
-		)
-	`)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Create comments table
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS comments (
-			id TEXT PRIMARY KEY,
-			post_id TEXT,
-			content TEXT,
-			created_at TIMESTAMP
-		)
-	`)
-	if err != nil {
-		log.Fatal(err)
-	}
 }
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
