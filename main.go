@@ -18,11 +18,13 @@ var db *sql.DB
 
 // Post structure
 type Post struct {
-	ID        string
-	Title     string
-	Content   string
-	Category  string
-	CreatedAt time.Time
+	ID         string
+	Title      string
+	Content    string
+	Category   string
+	CreatedAt  time.Time
+	Comments   []Comment
+	IsLoggedIn bool // to check whether the user is logged in or not
 }
 
 // User structure
@@ -38,24 +40,6 @@ type Comment struct {
 	PostID    string
 	Content   string
 	CreatedAt time.Time
-}
-
-func main() {
-	// Initialize the database
-	initDB()
-
-	// Create routes
-	http.HandleFunc("/", homeHandler)
-	http.HandleFunc("/register", registerHandler)
-	http.HandleFunc("/login", loginHandler)
-	http.HandleFunc("/logout", logoutHandler)
-	http.HandleFunc("/post/", viewPostHandler)
-	http.HandleFunc("/like/", likePostHandler)
-	http.HandleFunc("/dislike/", dislikePostHandler)
-	http.HandleFunc("/create-post", createPostHandler)
-
-	// Start the server
-	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
 func initDB() {
@@ -106,30 +90,16 @@ func initDB() {
 	}
 }
 
-func authMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Retrieve user ID from the cookie
-		cookie, err := r.Cookie("forum-session")
-		if err != nil || cookie.Value == "" {
-			// User is not authenticated, redirect to login page
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-
-		// User is authenticated, proceed to the next handler
-		next.ServeHTTP(w, r)
-	})
-}
-
 func registerHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Register handler received a request")
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	// Parse form data
-	err := r.ParseMultipartForm(10 << 20) // Adjust the value based on your form size
+	err := r.ParseForm()
 	if err != nil {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
@@ -167,28 +137,19 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	// Insert the user into the database
 	userID := uuid.New().String()
 	_, err = db.Exec(`
-		INSERT INTO users (id, email, username, password)
-		VALUES (?, ?, ?, ?)
-	`, userID, email, username, string(hashedPassword))
+        INSERT INTO users (id, email, username, password)
+        VALUES (?, ?, ?, ?)
+    `, userID, email, username, string(hashedPassword))
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	// Create a new session ID
-	sessionID := uuid.New().String()
+	fmt.Println("Successfully registered a new user")
 
-	// Set the session ID in a cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:    "forum-session",
-		Value:   sessionID,
-		Expires: time.Now().Add(24 * time.Hour), // Set expiration time
-		Path:    "/",
-	})
-
-	// Redirect to the home page or login page
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	// Redirect to the home page to login
+	http.Redirect(w, r, "/home?message=Registration%20successful", http.StatusSeeOther)
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -217,7 +178,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	`, email).Scan(&userID, &hashedPassword)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+			http.Error(w, "Incorrect email", http.StatusUnauthorized)
 		} else {
 			log.Println(err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -228,14 +189,12 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	// Compare the provided password with the hashed password
 	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	if err != nil {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		http.Error(w, "Incorrect password", http.StatusUnauthorized)
 		return
 	}
 
-	// Create a new session ID
+	// After successful login, create a new session ID and set it in a cookie
 	sessionID := uuid.New().String()
-
-	// Set the session ID in a cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:    "forum-session",
 		Value:   sessionID,
@@ -243,8 +202,8 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		Path:    "/",
 	})
 
-	// Redirect to the home page or user-specific page
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	// Redirect to the home page
+	http.Redirect(w, r, "/?message=Login%20successful", http.StatusSeeOther)
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -256,7 +215,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		Path:    "/",
 	})
 
-	// Redirect to the home page or login page
+	// Redirect to the home page
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
@@ -270,35 +229,157 @@ func emailExists(email string) bool {
 	return count > 0
 }
 
+func authMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Retrieve user ID from the cookie
+		cookie, err := r.Cookie("forum-session")
+		if err != nil || cookie.Value == "" {
+			// User is not authenticated, redirect to login page
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		// User is authenticated, proceed to the next handler
+		next.ServeHTTP(w, r)
+	})
+}
+
+// getPostsFromDatabase retrieves all posts from the database
+func getPostsFromDatabase() ([]Post, error) {
+	var posts []Post
+
+	rows, err := db.Query(`
+		SELECT id, title, content, category, created_at
+		FROM posts
+		ORDER BY created_at DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var post Post
+		err := rows.Scan(&post.ID, &post.Title, &post.Content, &post.Category, &post.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+
+		// Retrieve comments for the post
+		comments, err := getCommentsForPost(post.ID)
+		if err != nil {
+			return nil, err
+		}
+		post.Comments = comments
+
+		posts = append(posts, post)
+	}
+
+	return posts, nil
+}
+
+// getCommentsForPost retrieves all comments for a specific post from the database
+func getCommentsForPost(postID string) ([]Comment, error) {
+	var comments []Comment
+
+	rows, err := db.Query(`
+		SELECT id, post_id, content, created_at
+		FROM comments
+		WHERE post_id = ?
+		ORDER BY created_at DESC
+	`, postID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var comment Comment
+		err := rows.Scan(&comment.ID, &comment.PostID, &comment.Content, &comment.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+
+		comments = append(comments, comment)
+	}
+
+	return comments, nil
+}
+
+func main() {
+	// Initialize the database
+	initDB()
+
+	// Create routes
+	http.HandleFunc("/", homeHandler)
+	http.HandleFunc("/register", registerHandler)
+	http.HandleFunc("/login", loginHandler)
+	http.HandleFunc("/logout", logoutHandler)
+	http.HandleFunc("/post/", viewPostHandler)
+	http.HandleFunc("/like/", likePostHandler)
+	http.HandleFunc("/dislike/", dislikePostHandler)
+	http.HandleFunc("/create-post", createPostHandler)
+
+	// Start the server
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if the user is logged in
 	cookie, err := r.Cookie("forum-session")
-	if err != nil || cookie.Value == "" {
-		// User is not logged in, display login and registration options
-		tmpl, err := template.ParseFiles("templates/login.html")
+	isLoggedIn := err == nil && cookie.Value != ""
+
+	// Debugging: Print the IsLoggedIn value
+	fmt.Println("IsLoggedIn:", isLoggedIn)
+
+	// Retrieve posts and comments for display
+	posts, err := getPostsFromDatabase()
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Retrieve comments for each post
+	for i := range posts {
+		comments, err := getCommentsForPost(posts[i].ID)
 		if err != nil {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
+		posts[i].Comments = comments
+	}
 
-		tmpl.Execute(w, nil)
+	// Display posts and comments to the user
+	tmpl, err := template.ParseFiles("templates/home.html")
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	// User is logged in, display post creation form or other user-specific content
-	// ...
 
-	// For now, let's redirect to the post creation form
-	http.Redirect(w, r, "/create-post", http.StatusSeeOther)
-	return
+	tmpl.Execute(w, struct {
+		IsLoggedIn bool
+		Posts      []Post
+	}{
+		IsLoggedIn: isLoggedIn,
+		Posts:      posts,
+	})
 }
 
 func createPostHandler(w http.ResponseWriter, r *http.Request) {
-	// Check if the user is logged in (you may need to implement user authentication)
-	// For simplicity, this example assumes the user is logged in.
+	// Check if the user is logged in
+	cookie, err := r.Cookie("forum-session")
+	if err != nil || cookie.Value == "" {
+		// User is not logged in, redirect to the login page
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// User is logged in, proceed with post creation
 
 	// Parse the form data
-	err := r.ParseForm()
+	err = r.ParseForm()
 	if err != nil {
+		log.Printf("Error parsing form data: %v", err)
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
@@ -317,7 +398,7 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 		VALUES (?, ?, ?, ?, ?)
 	`, postID, title, content, category, time.Now())
 	if err != nil {
-		log.Println(err)
+		log.Printf("Error inserting post into the database: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}

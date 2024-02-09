@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forum</title>
+</head>
+<body>
+    <h1>Welcome to the Forum</h1>
+
+    {{if .IsLoggedIn}}
+        <p>You are logged in.</p> 
+        <form action="/logout" method="post">
+            <button type="submit">Logout</button>
+        </form>
+    {{else}}
+        <p>You are not logged in. Please log in or register.</p>
+        <h2>Login</h2>
+        <form action="/login" method="post">
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required>
+    
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+    
+            <button type="submit">Login</button>
+        </form>
+    
+        <h2>Register</h2>
+        <form action="/register" method="post">
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required>
+    
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+    
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+    
+            <button type="submit">Register</button>
+        </form>
+    {{end}}
+
+    {{range .Posts}}
+    <div>
+        <h3><a href="/post/{{.ID}}">{{.Title}}</a></h3>
+        <p>{{.Content}}</p>
+        <p>Category: {{.Category}}</p>
+        <p>Created at: {{.CreatedAt}}</p>
+        {{range .Comments}}
+        <div>
+            <p>{{.Content}}</p>
+            <p>Created at: {{.CreatedAt}}</p>
+        </div>
+        {{end}}
+    </div>
+    {{end}}
+</body>
+</html>
