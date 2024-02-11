@@ -338,7 +338,7 @@ func main() {
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/logout", logoutHandler)
 	http.HandleFunc("/create-post", createPostHandler)
-	http.HandleFunc("/add-comment", addCommentHandler)
+	http.HandleFunc("/add-comment/", addCommentHandler)
 	http.HandleFunc("/post/", viewPostHandler)
 	http.HandleFunc("/like/", likePostHandler)
 	http.HandleFunc("/dislike/", dislikePostHandler)
@@ -450,7 +450,7 @@ func addCommentHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Retrieve form data
 	postID := r.Form.Get("postID")
-	content := r.Form.Get("comment")
+	content := r.Form.Get("commentContent")
 
 	// Insert the comment into the database
 	_, err = db.Exec(`
