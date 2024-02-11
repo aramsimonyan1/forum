@@ -164,6 +164,16 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/home?message=Registration%20successful", http.StatusSeeOther)
 }
 
+func emailExists(email string) bool {
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", email).Scan(&count)
+	if err != nil {
+		log.Println(err)
+		return true // Assume email exists in case of an error
+	}
+	return count > 0
+}
+
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -241,16 +251,6 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Redirect to the home page
 	http.Redirect(w, r, "/", http.StatusSeeOther)
-}
-
-func emailExists(email string) bool {
-	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", email).Scan(&count)
-	if err != nil {
-		log.Println(err)
-		return true // Assume email exists in case of an error
-	}
-	return count > 0
 }
 
 func authMiddleware(next http.Handler) http.Handler {
@@ -337,10 +337,11 @@ func main() {
 	http.HandleFunc("/register", registerHandler)
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/logout", logoutHandler)
+	http.HandleFunc("/create-post", createPostHandler)
+	http.HandleFunc("/create-comment", createCommentHandler)
 	http.HandleFunc("/post/", viewPostHandler)
 	http.HandleFunc("/like/", likePostHandler)
 	http.HandleFunc("/dislike/", dislikePostHandler)
-	http.HandleFunc("/create-post", createPostHandler)
 
 	// Start the server
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -426,6 +427,43 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Redirect to the home page
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func createCommentHandler(w http.ResponseWriter, r *http.Request) {
+	// Check if the user is logged in
+	cookie, err := r.Cookie("forum-session")
+	if err != nil || cookie.Value == "" {
+		// User is not logged in, redirect to the login page
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// User is logged in, proceed with comment creation
+
+	// Parse the form data
+	err = r.ParseForm()
+	if err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	// Retrieve form data
+	postID := r.Form.Get("postID")
+	content := r.Form.Get("comment")
+
+	// Insert the comment into the database
+	_, err = db.Exec(`
+        INSERT INTO comments (id, post_id, content, created_at)
+        VALUES (?, ?, ?, ?)
+    `, uuid.New().String(), postID, content, time.Now())
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Redirect back to the home page
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 

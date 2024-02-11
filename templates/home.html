@@ -13,6 +13,25 @@
         <form action="/logout" method="post">
             <button type="submit">Logout</button>
         </form>
+
+        <!-- Post creation form -->
+        <h2>Create a Post</h2>
+        <form action="/create-post" method="post">
+            <label for="title">Title:</label>
+            <input type="text" id="title" name="title" required>
+            
+            <label for="content">Content:</label>
+            <textarea id="content" name="content" rows="4" required></textarea>
+            
+            <label for="category">Category:</label>
+            <select id="category" name="category" required>
+                <option value="food">Food</option>
+                <option value="politics">Politics</option>
+                <option value="sport">Sport</option>
+                <option value="tech">Tech</option>
+            </select>
+            <button type="submit">Create Post</button>
+        </form>
     {{else}}
         <p>You are not logged in. Please log in or register.</p>
         <h2>Login</h2>
@@ -47,13 +66,32 @@
         <p>{{.Content}}</p>
         <p>Category: {{.Category}}</p>
         <p>Created at: {{.CreatedAt}}</p>
+
+        <!-- Display comments -->
         {{range .Comments}}
         <div>
             <p>{{.Content}}</p>
             <p>Created at: {{.CreatedAt}}</p>
         </div>
         {{end}}
-    </div>
+
+        <!-- Comment creation form -->
+        <h4>Add Comment</h4>
+        <form action="/add-comment/{{.ID}}" method="post">
+            <label for="commentContent">Comment:</label>
+            <textarea id="commentContent" name="commentContent" required></textarea>
+            <button type="submit">Add Comment</button>
+        </form>        
+
+        {{if .IsLoggedIn}}
+            <!-- Comment form for logged-in users -->
+            <form action="/create-comment" method="post">
+                <input type="hidden" name="postID" value="{{.ID}}">
+                <label for="comment">Add Comment:</label>
+                <textarea id="comment" name="comment" required></textarea>
+                <button type="submit">Add Comment</button>
+            </form>
+        {{end}}
     {{end}}
 </body>
 </html>
