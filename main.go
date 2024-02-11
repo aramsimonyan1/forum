@@ -419,7 +419,7 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 	_, err = db.Exec(`
 		INSERT INTO posts (id, title, content, category, created_at)
 		VALUES (?, ?, ?, ?, ?)
-	`, postID, title, content, category, time.Now())
+	`, postID, title, content, category, time.Now().Format("2006-01-02 15:04:05"))
 	if err != nil {
 		log.Printf("Error inserting post into the database: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -449,14 +449,16 @@ func addCommentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Retrieve form data
-	postID := r.Form.Get("postID")
+	// postID := r.Form.Get("postID")
+	// Extract post ID from the URL path and the content from the form
+	postID := extractPostID(r.URL.Path)
 	content := r.Form.Get("commentContent")
 
 	// Insert the comment into the database
 	_, err = db.Exec(`
         INSERT INTO comments (id, post_id, content, created_at)
         VALUES (?, ?, ?, ?)
-    `, uuid.New().String(), postID, content, time.Now())
+    `, uuid.New().String(), postID, content, time.Now().Format("2006-01-02 15:04:05"))
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
