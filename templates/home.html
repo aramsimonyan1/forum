@@ -32,6 +32,32 @@
             </select>
             <button type="submit">Create Post</button>
         </form>
+
+        {{range .Posts}}
+        <div>
+            <h3><a href="/post/{{.ID}}">{{.Title}}</a></h3>
+            <p>{{.Content}}</p>
+            <p>Category: {{.Category}}</p>
+            <p>Created at: {{.CreatedAt}}</p>
+    
+            <!-- Display comments -->
+            {{range .Comments}}
+            <div>
+                <p>{{.Content}}</p>
+                <p>Created at: {{.CreatedAt}}</p>
+            </div>
+            {{end}}
+    
+            <!-- Comment creation form -->
+            <h4>Add Comment</h4>
+            <form action="/add-comment/{{.ID}}" method="post">
+                <label for="commentContent">Comment:</label>
+                <textarea id="commentContent" name="commentContent" required></textarea>
+                <button type="submit">Add Comment</button>
+            </form>        
+        {{end}}
+
+
     {{else}}
         <p>You are not logged in. Please log in or register.</p>
         <h2>Login</h2>
@@ -58,39 +84,21 @@
     
             <button type="submit">Register</button>
         </form>
-    {{end}}
 
-    {{range .Posts}}
-    <div>
-        <h3><a href="/post/{{.ID}}">{{.Title}}</a></h3>
-        <p>{{.Content}}</p>
-        <p>Category: {{.Category}}</p>
-        <p>Created at: {{.CreatedAt}}</p>
-
-        <!-- Display comments -->
-        {{range .Comments}}
+        {{range .Posts}}
         <div>
+            <h3><a href="/post/{{.ID}}">{{.Title}}</a></h3>
             <p>{{.Content}}</p>
+            <p>Category: {{.Category}}</p>
             <p>Created at: {{.CreatedAt}}</p>
-        </div>
-        {{end}}
-
-        <!-- Comment creation form -->
-        <h4>Add Comment</h4>
-        <form action="/add-comment/{{.ID}}" method="post">
-            <label for="commentContent">Comment:</label>
-            <textarea id="commentContent" name="commentContent" required></textarea>
-            <button type="submit">Add Comment</button>
-        </form>        
-
-        {{if .IsLoggedIn}}
-            <!-- Comment form for logged-in users -->
-            <form action="/create-comment" method="post">
-                <input type="hidden" name="postID" value="{{.ID}}">
-                <label for="comment">Add Comment:</label>
-                <textarea id="comment" name="comment" required></textarea>
-                <button type="submit">Add Comment</button>
-            </form>
+    
+            <!-- Display comments -->
+            {{range .Comments}}
+            <div>
+                <p>{{.Content}}</p>
+                <p>Created at: {{.CreatedAt}}</p>
+            </div>
+            {{end}}      
         {{end}}
     {{end}}
 </body>

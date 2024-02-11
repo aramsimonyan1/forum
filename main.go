@@ -338,7 +338,7 @@ func main() {
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/logout", logoutHandler)
 	http.HandleFunc("/create-post", createPostHandler)
-	http.HandleFunc("/create-comment", createCommentHandler)
+	http.HandleFunc("/add-comment", addCommentHandler)
 	http.HandleFunc("/post/", viewPostHandler)
 	http.HandleFunc("/like/", likePostHandler)
 	http.HandleFunc("/dislike/", dislikePostHandler)
@@ -430,12 +430,12 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-func createCommentHandler(w http.ResponseWriter, r *http.Request) {
+func addCommentHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if the user is logged in
 	cookie, err := r.Cookie("forum-session")
 	if err != nil || cookie.Value == "" {
 		// User is not logged in, redirect to the login page
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
