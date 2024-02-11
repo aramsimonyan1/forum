@@ -16,6 +16,13 @@ import (
 
 var db *sql.DB
 
+// User structure
+type User struct {
+	ID       string
+	Username string
+	Password string
+}
+
 // Post structure
 type Post struct {
 	ID         string
@@ -25,13 +32,6 @@ type Post struct {
 	CreatedAt  time.Time
 	Comments   []Comment
 	IsLoggedIn bool // to check whether the user is logged in or not
-}
-
-// User structure
-type User struct {
-	ID       string
-	Username string
-	Password string
 }
 
 // Comment structure
@@ -49,6 +49,19 @@ func initDB() {
 		log.Fatal(err)
 	}
 
+	// Create users table
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS users (
+			id TEXT PRIMARY KEY,
+			email TEXT,
+			username TEXT,
+			password TEXT
+		)
+	`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Create posts table
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS posts (
@@ -57,19 +70,6 @@ func initDB() {
 			content TEXT,
 			category TEXT,
 			created_at TIMESTAMP
-		)
-	`)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Create users table
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS users (
-			id TEXT PRIMARY KEY,
-			email TEXT,
-			username TEXT,
-			password TEXT
 		)
 	`)
 	if err != nil {
@@ -122,7 +122,19 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Check if email is already taken
 	if emailExists(email) {
-		http.Error(w, "Email already taken", http.StatusConflict)
+		errorMessage := "This email is already registered in database. Use your password to login."
+		// Display an error message and redirect after 5 seconds.  //%s is a placeholder replaced by the value of errorMessage variable
+		errorPage := fmt.Sprintf(`
+            <html>
+				<body style="font-size: 25px;">
+                    <p>%s</p>                                        
+                    <meta http-equiv="refresh" content="5;url=/">
+                </body>
+            </html>
+        `, errorMessage)
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusConflict)
+		w.Write([]byte(errorPage))
 		return
 	}
 
@@ -189,7 +201,19 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	// Compare the provided password with the hashed password
 	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	if err != nil {
-		http.Error(w, "Incorrect password", http.StatusUnauthorized)
+		errorMessage := "Invalid password. Please try again."
+		// Display an error message and redirect after 5 seconds
+		errorPage := fmt.Sprintf(`
+            <html>
+				<body>
+					<p style="font-size: 2em;">%s</p>
+                    <meta http-equiv="refresh" content="5;url=/">
+                </body>
+            </html>
+        `, errorMessage)
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(errorPage))
 		return
 	}
 
@@ -202,7 +226,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		Path:    "/",
 	})
 
-	// Redirect to the home page
+	// Redirect to the home page after successful login
 	http.Redirect(w, r, "/?message=Login%20successful", http.StatusSeeOther)
 }
 
@@ -234,8 +258,8 @@ func authMiddleware(next http.Handler) http.Handler {
 		// Retrieve user ID from the cookie
 		cookie, err := r.Cookie("forum-session")
 		if err != nil || cookie.Value == "" {
-			// User is not authenticated, redirect to login page
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			// User is not authenticated, redirect to home page
+			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}
 
@@ -274,7 +298,6 @@ func getPostsFromDatabase() ([]Post, error) {
 
 		posts = append(posts, post)
 	}
-
 	return posts, nil
 }
 
@@ -302,7 +325,6 @@ func getCommentsForPost(postID string) ([]Comment, error) {
 
 		comments = append(comments, comment)
 	}
-
 	return comments, nil
 }
 
