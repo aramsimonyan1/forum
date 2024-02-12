@@ -3,26 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/styles.css">
     <title>Forum</title>
 </head>
 <body>
     <h1>Welcome to the Forum</h1>
 
     {{if .IsLoggedIn}}
-        <p>You are logged in.</p> 
-        <form action="/logout" method="post">
-            <button type="submit">Logout</button>
-        </form>
+        <div class="logout">
+            <form action="/logout" method="post">
+                <button type="submit">Logout</button>
+            </form>
+        </div>
 
         <!-- Post creation form -->
         <h2>Create a Post</h2>
         <form action="/create-post" method="post">
-            <label for="title">Title:</label>
-            <input type="text" id="title" name="title" required>
             
-            <label for="content">Content:</label>
-            <textarea id="content" name="content" rows="4" required></textarea>
-            
+            <label for="title"></label>
+            <input type="text" id="title" name="title" placeholder="post title" required>
+
             <label for="category">Category:</label>
             <select id="category" name="category" required>
                 <option value="food">Food</option>
@@ -30,76 +30,89 @@
                 <option value="sport">Sport</option>
                 <option value="tech">Tech</option>
             </select>
+            
+            <label for="content"></label>
+            <textarea id="content" name="content" rows="6" placeholder="post content" required></textarea>
             <button type="submit">Create Post</button>
         </form>
 
-        {{range .Posts}}
-        <div>
-            <h3><a href="/post/{{.ID}}">{{.Title}}</a></h3>
-            <p>{{.Content}}</p>
-            <p>Category: {{.Category}}</p>
-            <p>Created at: {{.CreatedAt}}</p>
-    
-            <!-- Display comments -->
-            {{range .Comments}}
-            <div>
-                <p>{{.Content}}</p>
-                <p>Created at: {{.CreatedAt}}</p>
-            </div>
-            {{end}}
-    
-            <!-- Comment creation form -->
-            <h4>Add Comment</h4>
-            <form action="/add-comment/{{.ID}}" method="post">
-                <label for="commentContent">Comment:</label>
-                <textarea id="commentContent" name="commentContent" required></textarea>
-                <button type="submit">Add Comment</button>
-            </form>        
-        {{end}}
 
+        {{range .Posts}}
+            <div class="posts-container">
+                <div class="post">
+                    <h3><a href="/post/{{.ID}}">{{.Title}}</a></h3>
+                    <p>Category: {{.Category}}</p>
+                    <p>{{.Content}}</p>
+                    <p>Created at: {{.CreatedAt}}</p>
+            
+                    <!-- Display comments -->
+                    {{range .Comments}}
+                        <div>
+                            <p>{{.Content}}</p>
+                            <p>Created at: {{.CreatedAt}}</p>
+                        </div>
+                    {{end}}
+            
+                    <!-- Comment creation form -->
+                    <h5>Add Comment</h5>
+                    <form action="/add-comment/{{.ID}}" method="post">
+                        <label for="commentContent"></label>
+                        <textarea id="commentContent" name="commentContent" rows="3" placeholder="type your comment" required></textarea>
+                        <button type="submit">Add Comment</button>
+                    </form>
+                </div>     
+            </div>
+        {{end}}   
 
     {{else}}
-        <p>You are not logged in. Please log in or register.</p>
-        <h2>Login</h2>
-        <form action="/login" method="post">
-            <label for="email">Email:</label>
-            <input type="email" id="email" name="email" required>
-    
-            <label for="password">Password:</label>
-            <input type="password" id="password" name="password" required>
-    
-            <button type="submit">Login</button>
-        </form>
-    
-        <h2>Register</h2>
-        <form action="/register" method="post">
-            <label for="email">Email:</label>
-            <input type="email" id="email" name="email" required>
-    
-            <label for="username">Username:</label>
-            <input type="text" id="username" name="username" required>
-    
-            <label for="password">Password:</label>
-            <input type="password" id="password" name="password" required>
-    
-            <button type="submit">Register</button>
-        </form>
-
-        {{range .Posts}}
-        <div>
-            <h3><a href="/post/{{.ID}}">{{.Title}}</a></h3>
-            <p>{{.Content}}</p>
-            <p>Category: {{.Category}}</p>
-            <p>Created at: {{.CreatedAt}}</p>
-    
-            <!-- Display comments -->
-            {{range .Comments}}
-            <div>
-                <p>{{.Content}}</p>
-                <p>Created at: {{.CreatedAt}}</p>
+        <div class="please-log-in"><p>You are not logged in. Please log in or register.</p></div>
+        <div class="auth-forms">
+            <div class="login-form">
+                <div class="Login-Register"><h2>Login</h2></div>
+                <form action="/login" method="post">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required>
+            
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+            
+                    <button type="submit">Login</button>
+                </form>
+            </div>    
+            <div class="register-form">
+                <div class="Login-Register"><h2>Register</h2></div>
+                <form action="/register" method="post">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required>
+            
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required>
+            
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+            
+                    <button type="submit">Register</button>
+                </form>
             </div>
-            {{end}}      
-        {{end}}
+        </div>
+
+        <div class="posts-container">
+            {{range .Posts}}
+                <div class="post">
+                    <h3><a href="/post/{{.ID}}">{{.Title}}</a></h3>
+                    <p>Category: {{.Category}}</p>
+                    <p>{{.Content}}</p>
+                    <p>Created at: {{.CreatedAt}}</p>
+            
+                    <!-- Display comments -->
+                    {{range .Comments}}
+                        <div>
+                            <p>{{.Content}}</p>
+                            <p>Created at: {{.CreatedAt}}</p>
+                        </div>
+                    {{end}}
+                </div>          
+            {{end}}
     {{end}}
 </body>
 </html>

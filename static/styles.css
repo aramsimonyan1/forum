@@ -5,52 +5,102 @@ body {
     background-color: rgb(215, 218, 223);
     margin: 20px;
 }
-.textcentered {
+
+h1{
+    text-align: center;
+    margin-top: 40px;
+}
+
+.please-log-in {
+    text-align: center;
+    margin-top: 40px;
+}
+
+h2 {
+    text-align: center;
+    margin-top: 40px;
+}
+
+h5 {
+    text-align: center;
+    margin-top: 20px;
+}
+
+/* styles for the auth forms */
+.auth-forms {
+    display: flex;
+    justify-content: center;
+}
+
+.Login-Register{
     text-align: center;
 }
-.flex-container {
+
+.login-form, .register-form {
+    /* Add styles... */
+    display: inline-block;
+    width: 40%; 
+}
+
+.logout {
     display: flex;
+    justify-content: flex-end;
     align-items: center;
-    justify-content: center;
-    font-family: Arial, Helvetica, sans-serif;
-    background-color: rgb(215, 218, 223);
-  }
-.row {
-    display: flex;
-    flex-wrap: wrap;
-    padding-left: 10%;
-    justify-content: space-between;
-}
-.band {
-    flex: 0 15% 15%;
     padding: 10px;
+    position: fixed;
+    top: 0;
+    right: 0;
+    color: white;
+    width: 100px;
 }
-.band img {
-    width: 50%;
-    height: auto;
-    cursor: pointer;
+
+.logout button{
+    margin-left: 10px;
+    background-color: rgb(4, 0, 255);
+    width: 80px;
+}
+.posts-container {
+    display: flex;
+    flex-flow:column;
+
 }
 
+/* the style for posts */
+.post {
+    flex: 0 0 calc(23.333% - 20px);
+    padding: 10px;
+    border: 1px solid #a7a6a6;
+    margin-bottom: 5px;
+    margin-top: 10px;
+    transition: background-color 0.3s ease;
+}
 
+/* the hover effect */
+.post:hover {
+    background-color: #f0f0f0;
+}
 
-
-form {
-    max-width: 400px;
-    margin: 0 auto;
+textarea {
+    margin-top: 10px;
+    width: 350px;
 }
 
 input {
-    width: 100%;
-    padding: 10px;
+    width: 350px;
     margin-bottom: 10px;
-    box-sizing: border-box;
+    line-height: 24px;
+}
+
+form {
+    width: 350px;
+    margin: 0 auto;
 }
 
 button {
     background-color: #4CAF50;
     color: white;
-    padding: 10px;
+    padding: 8px;
     border: none;
-    width: 100%;
+    width: 150px;
     cursor: pointer;
 }

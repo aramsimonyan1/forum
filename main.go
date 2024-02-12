@@ -332,6 +332,9 @@ func main() {
 	// Initialize the database
 	initDB()
 
+	// Serve static files
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+
 	// Create routes
 	http.HandleFunc("/", homeHandler)
 	http.HandleFunc("/register", registerHandler)
