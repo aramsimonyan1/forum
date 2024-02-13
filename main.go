@@ -28,7 +28,7 @@ type Post struct {
 	ID         string
 	Title      string
 	Content    string
-	Category   string
+	Categories []string
 	CreatedAt  time.Time
 	Comments   []Comment
 	IsLoggedIn bool // to check whether the user is logged in or not
@@ -68,7 +68,7 @@ func initDB() {
 			id TEXT PRIMARY KEY,
 			title TEXT,
 			content TEXT,
-			category TEXT,
+			categories TEXT,
 			created_at TIMESTAMP
 		)
 	`)
@@ -200,7 +200,19 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	`, email).Scan(&userID, &hashedPassword)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			http.Error(w, "Incorrect email", http.StatusUnauthorized)
+			errorMessage := "Incorrect email. Redirecting to the main page..."
+			// Display an error message and redirect after 4 seconds
+			errorPage := fmt.Sprintf(`
+				<html>
+					<body style="font-size: 2em;">
+						<p>%s</p>
+						<meta http-equiv="refresh" content="4;url=/">
+					</body>
+				</html>
+			`, errorMessage)
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(errorPage))
 		} else {
 			log.Println(err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -273,7 +285,7 @@ func getPostsFromDatabase() ([]Post, error) {
 	var posts []Post
 
 	rows, err := db.Query(`
-		SELECT id, title, content, category, created_at
+		SELECT id, title, content, categories, created_at
 		FROM posts
 		ORDER BY created_at DESC
 	`)
@@ -284,10 +296,14 @@ func getPostsFromDatabase() ([]Post, error) {
 
 	for rows.Next() {
 		var post Post
-		err := rows.Scan(&post.ID, &post.Title, &post.Content, &post.Category, &post.CreatedAt)
+		var categoriesString string
+		err := rows.Scan(&post.ID, &post.Title, &post.Content, &categoriesString, &post.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
+
+		// Split the categories string into a slice
+		post.Categories = strings.Split(categoriesString, ",")
 
 		// Retrieve comments for the post
 		comments, err := getCommentsForPost(post.ID)
@@ -361,6 +377,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	// Retrieve posts and comments for display
 	posts, err := getPostsFromDatabase()
 	if err != nil {
+		log.Printf("Error getting posts from the database: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -369,6 +386,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	for i := range posts {
 		comments, err := getCommentsForPost(posts[i].ID)
 		if err != nil {
+			log.Printf("Error getting comments for post %s: %v", posts[i].ID, err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
@@ -378,17 +396,22 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	// Display posts and comments to the user
 	tmpl, err := template.ParseFiles("templates/home.html")
 	if err != nil {
+		log.Printf("Error parsing template: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	tmpl.Execute(w, struct {
+	if err := tmpl.Execute(w, struct {
 		IsLoggedIn bool
 		Posts      []Post
 	}{
 		IsLoggedIn: isLoggedIn,
 		Posts:      posts,
-	})
+	}); err != nil {
+		log.Printf("Error executing template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 }
 
 func createPostHandler(w http.ResponseWriter, r *http.Request) {
@@ -413,16 +436,16 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 	// Retrieve form data
 	title := r.Form.Get("title")
 	content := r.Form.Get("content")
-	category := r.Form.Get("category")
+	categories := r.Form["categories"]
 
 	// Generate a unique ID for the post
 	postID := uuid.New().String()
 
 	// Insert the post into the database
 	_, err = db.Exec(`
-		INSERT INTO posts (id, title, content, category, created_at)
+		INSERT INTO posts (id, title, content, categories, created_at)
 		VALUES (?, ?, ?, ?, ?)
-	`, postID, title, content, category, time.Now().Format("2006-01-02 15:04:05"))
+	`, postID, title, content, strings.Join(categories, ","), time.Now().Format("2006-01-02 15:04:05"))
 	if err != nil {
 		log.Printf("Error inserting post into the database: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -527,7 +550,7 @@ func extractPostID(path string) string {
 
 func getPosts() ([]Post, error) {
 	rows, err := db.Query(`
-		SELECT id, title, content, category, created_at
+		SELECT id, title, content, categories, created_at
 		FROM posts
 		ORDER BY created_at DESC
 	`)
@@ -539,27 +562,39 @@ func getPosts() ([]Post, error) {
 	var posts []Post
 	for rows.Next() {
 		var post Post
-		err := rows.Scan(&post.ID, &post.Title, &post.Content, &post.Category, &post.CreatedAt)
+		var categoriesString string
+		err := rows.Scan(&post.ID, &post.Title, &post.Content, &categoriesString, &post.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
+		// Convert the comma-separated string to a slice of strings
+		post.Categories = splitCategories(categoriesString)
 		posts = append(posts, post)
 	}
 
 	return posts, nil
 }
 
+// splitCategories splits a comma-separated string into a slice of strings
+func splitCategories(categoriesString string) []string {
+	return strings.Split(categoriesString, ",")
+}
+
 // ...
 func getPostByID(postID string) (*Post, error) {
 	var post Post
+	var categoriesString string
 	err := db.QueryRow(`
-		SELECT id, title, content, category, created_at
+		SELECT id, title, content, categories, created_at
 		FROM posts
 		WHERE id = ?
-	`, postID).Scan(&post.ID, &post.Title, &post.Content, &post.Category, &post.CreatedAt)
+	`, postID).Scan(&post.ID, &post.Title, &post.Content, &categoriesString, &post.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
+
+	// Convert the comma-separated string to a slice of strings
+	post.Categories = splitCategories(categoriesString)
 
 	return &post, nil
 }
