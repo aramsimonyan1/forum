@@ -16,14 +16,14 @@
             </form>
         </div>
 
-        <!-- Post creation form -->
+        <!-- Post creation form or users who are logged in-->
         <h2>Create a Post</h2>
         <form action="/create-post" method="post">
             <label for="title"></label>
             <input type="text" id="title" name="title" placeholder="post title" required>
 
             <label for="category">Category:</label>
-            <select id="categories" name="categories" multiple required>
+            <select id="categories" name="categories[]" multiple required>
                 <option value="food">Food</option>
                 <option value="politics">Politics</option>
                 <option value="sport">Sport</option>
@@ -48,8 +48,6 @@
                     </p>
                     <p>Content: {{.Content}}</p>
                     <p>Created at: {{.CreatedAt}}</p>
-            
-                    <!-- Display comments -->
                     {{range .Comments}}
                         <div>
                             <p>{{.Content}}</p>
@@ -105,14 +103,9 @@
             {{range .Posts}}
                 <div class="post">
                     <h3><a href="/post/{{.ID}}">{{.Title}}</a></h3>
-                    <p>Category: 
-                        {{range .Categories}}{{.}}, 
-                        {{end}}
-                    </p>
+                    <p>Category: {{range .Categories}}{{.}}, {{end}}</p>
                     <p>Content: {{.Content}}</p>
                     <p>Created at: {{.CreatedAt}}</p>
-            
-                    <!-- Display comments -->
                     {{range .Comments}}
                         <div>
                             <p>{{.Content}}</p>

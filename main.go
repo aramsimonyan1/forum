@@ -436,7 +436,7 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 	// Retrieve form data
 	title := r.Form.Get("title")
 	content := r.Form.Get("content")
-	categories := r.Form["categories"]
+	categories := r.Form["categories[]"]
 
 	// Generate a unique ID for the post
 	postID := uuid.New().String()
