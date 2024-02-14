@@ -39,43 +39,58 @@
         {{range .Posts}}
             <div class="posts-container">
                 <div class="post" id="post-{{.ID}}">
-                    <h3><a href="/post/{{.ID}}">{{.Title}}</a></h3>
-                    <p>Category:
+                    <p><span class="fixed-content">Title: </span><a href="/post/{{.ID}}">{{.Title}}</a></p> 
+                    <p><span class="fixed-content">Category:</span>
                         {{range $index, $category := .Categories}}
                             {{if $index}}, {{end}}
                             {{$category}}
                         {{end}}
                     </p>
-                    <p>Post: {{.Content}}</p>
-                    <p>Created at: {{.CreatedAt}}</p>
+                    <p><span class="fixed-content">Content: </span>{{.Content}}</p>
+                    <p><span class="fixed-content">Created at: </span>{{.CreatedAt}}</p>
                     
                         <!-- Like and Dislike buttons for posts -->
-                        <div class="interactions">
-                            <span class="like-span">
+                        <div id="interactions">
+                            <div class="interaction-button">
                                 <form action="/like/{{.ID}}" method="post">
-                                    <button type="submit">Like</button>
+                                    <button class="interaction-button" type="submit">Like</button>
                                 </form>
-                                {{.LikesCount}}
-                            </span>
-                            <span class="dislike-span"> 
+                            </div>
+                            <div class="interaction-count">
+                                Likes: {{.LikesCount}}
+                            </div>
+                            <div class="interaction-button"> 
                                 <form action="/dislike/{{.ID}}" method="post">
-                                    <button type="submit">Dislike</button>
+                                    <button class="interaction-button" type="submit">Dislike</button>
                                 </form>
-                                {{.DislikesCount}}
-                            </span>
+                            </div>    
+                            <div class="interaction-count">
+                                Dislikes: {{.DislikesCount}}
+                            </div>
                         </div>
                     {{range .Comments}}
-                        <div class="comment" id="comment-{{.ID}}">
-                            <p>Comment: {{.Content}}</p>
-                            <p>Created at: {{.CreatedAt}}</p>
-                            <p>Likes: {{.LikesCount}}, Dislikes: {{.DislikesCount}}</p>
-                            <!-- Like and Dislike buttons for comments -->
-                            <form action="/like-comment/{{.ID}}" method="post">
-                                <button type="submit">Like</button>
-                            </form>
-                            <form action="/dislike-comment/{{.ID}}" method="post">
-                                <button type="submit">Dislike</button>
-                            </form>
+                        <div id="commentDetails"> 
+                                <p>Comment: {{.Content}}</p>
+                                <p>Created at: {{.CreatedAt}}</p>
+                                <!-- Like and Dislike buttons for comments -->
+                            <div class="interactions" id="comment-{{.ID}}">
+                                <div class="interaction-button">
+                                    <form action="/like-comment/{{.ID}}" method="post">
+                                        <button class="comm-interaction-button" type="submit">Like</button>
+                                    </form>
+                                </div>
+                                <div class="interaction-count">
+                                    Likes: {{.LikesCount}}
+                                </div>
+                                <div class="interaction-button"> 
+                                    <form action="/dislike-comment/{{.ID}}" method="post">
+                                        <button class="comm-interaction-button" type="submit">Dislike</button>
+                                    </form>
+                                </div>
+                                <div class="interaction-count"> 
+                                    Dislikes: {{.DislikesCount}}
+                                </div>
+                            </div>
                         </div>
                     {{end}}
             
@@ -84,7 +99,7 @@
                     <form action="/add-comment/{{.ID}}" method="post">
                         <label for="commentContent"></label>
                         <textarea id="commentContent" name="commentContent" rows="3" placeholder="type your comment" required></textarea>
-                        <button type="submit">Add Comment</button>
+                        <button class="add-comment" type="submit">Add Comment</button>
                     </form>
                 </div>     
             </div>
@@ -128,7 +143,7 @@
                 <div class="post">
                     <h3><a href="/post/{{.ID}}">{{.Title}}</a></h3>
                     <p>Category: {{range .Categories}}{{.}}, {{end}}</p>
-                    <p>Post: {{.Content}}</p>
+                    <p>Content: {{.Content}}</p>
                     <p>Created at: {{.CreatedAt}}</p>
                     <p>Likes: {{.LikesCount}}, Dislikes: {{.DislikesCount}}</p>
                     {{range .Comments}}

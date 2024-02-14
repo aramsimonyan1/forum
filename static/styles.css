@@ -26,10 +26,19 @@ h5 {
     margin-top: 20px;
 }
 
+.fixed-content {
+    font-weight: bold;
+    /* Add any other styling you want for fixed content */
+}
+
 /* styles for the auth forms */
 .auth-forms {
     display: flex;
     justify-content: center;
+}
+
+.p {
+    font: bold;
 }
 
 .Login-Register{
@@ -80,18 +89,47 @@ h5 {
     background-color: #f0f0f0;
 }
 
-.interactions {
-    display: inline-block;
+#interactions {
+    width: 50%;
+    display: grid;
+    grid-template-columns: 100px 300px;
+    justify-items: normal;
+    align-items: center;
 }
 
-span.like-span, span.dislike-span {
-    display: flex;
-    flex-flow: row;
-    justify-items:normal;
+.interaction-button, .interaction-count {
+    width: 30%;
     margin-left: 5px;
     margin-bottom: 5px;
-    color: #007bff; /* Change to your preferred color */
-    font-weight: bold;
+}
+
+#commentDetails {
+    margin-top: 50px;
+    margin-left: 100px;
+
+}
+
+.interactions {
+    width: 25%;
+    display: grid;
+    grid-template-columns: 100px 300px;
+    justify-items: normal;
+    align-items: center;
+}
+
+.interaction-button, .interaction-count {
+    width: 30%;
+    margin-left: 5px;
+    margin-bottom: 5px;
+}
+
+.comm-interaction-button {
+background-color: rgb(243, 137, 55);
+color: white;
+padding: 8px;
+border: none;
+width: 75px;
+cursor: pointer;
 }
 
 textarea {
@@ -116,5 +154,23 @@ button {
     padding: 8px;
     border: none;
     width: 150px;
+    cursor: pointer;
+}
+
+button.interaction-button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 8px;
+    border: none;
+    width: 75px;
+    cursor: pointer;
+}
+
+button.add-comment {
+    background-color: rgb(243, 137, 55);
+    color: white;
+    padding: 8px;
+    border: none;
+    width: 105px;
     cursor: pointer;
 }
