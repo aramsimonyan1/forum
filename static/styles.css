@@ -80,6 +80,20 @@ h5 {
     background-color: #f0f0f0;
 }
 
+.interactions {
+    display: inline-block;
+}
+
+span.like-span, span.dislike-span {
+    display: flex;
+    flex-flow: row;
+    justify-items:normal;
+    margin-left: 5px;
+    margin-bottom: 5px;
+    color: #007bff; /* Change to your preferred color */
+    font-weight: bold;
+}
+
 textarea {
     margin-top: 10px;
     width: 350px;

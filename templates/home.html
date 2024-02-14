@@ -48,14 +48,22 @@
                     </p>
                     <p>Post: {{.Content}}</p>
                     <p>Created at: {{.CreatedAt}}</p>
-                    <p>Likes: {{.LikesCount}}, Dislikes: {{.DislikesCount}}</p>
-                    <!-- Like and Dislike buttons for posts -->
-                    <form action="/like/{{.ID}}" method="post">
-                        <button type="submit">Like</button>
-                    </form>
-                    <form action="/dislike/{{.ID}}" method="post">
-                        <button type="submit">Dislike</button>
-                    </form>
+                    
+                        <!-- Like and Dislike buttons for posts -->
+                        <div class="interactions">
+                            <span class="like-span">
+                                <form action="/like/{{.ID}}" method="post">
+                                    <button type="submit">Like</button>
+                                </form>
+                                {{.LikesCount}}
+                            </span>
+                            <span class="dislike-span"> 
+                                <form action="/dislike/{{.ID}}" method="post">
+                                    <button type="submit">Dislike</button>
+                                </form>
+                                {{.DislikesCount}}
+                            </span>
+                        </div>
                     {{range .Comments}}
                         <div class="comment" id="comment-{{.ID}}">
                             <p>Comment: {{.Content}}</p>
