@@ -21,16 +21,6 @@ h2 {
     margin-top: 40px;
 }
 
-h5 {
-    text-align: center;
-    margin-top: 20px;
-}
-
-.fixed-content {
-    font-weight: bold;
-    /* Add any other styling you want for fixed content */
-}
-
 /* styles for the auth forms */
 .auth-forms {
     display: flex;
@@ -64,10 +54,27 @@ h5 {
     background-color: rgb(4, 0, 255);
     width: 80px;
 }
+
+#avalable-categories {
+    display: grid;
+    grid-template-columns: 200px 50px;
+    justify-items: center;
+    align-items: center;
+}
+
+.create-post {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.fixed-content {
+    font-weight: bold;
+}
+
 .posts-container {
     display: flex;
-    flex-flow:column;
-
+    flex-flow: column;
 }
 
 /* the style for posts */
@@ -88,7 +95,7 @@ h5 {
 #interactions {
     width: 50%;
     display: grid;
-    grid-template-columns: 100px 300px;
+    grid-template-columns: 95px 300px;
     justify-items: normal;
     align-items: center;
 }
@@ -97,6 +104,7 @@ h5 {
     width: 30%;
     margin-left: 5px;
     margin-bottom: 5px;
+    background-color: blueviolet;
 }
 
 #commentDetails {
@@ -106,17 +114,12 @@ h5 {
 }
 
 .interactions {
-    width: 25%;
+    width: 20%;
     display: grid;
-    grid-template-columns: 100px 300px;
+    grid-template-columns: 70px 300px;
     justify-items: normal;
     align-items: center;
-}
-
-.interaction-button, .interaction-count {
-    width: 30%;
-    margin-left: 5px;
-    margin-bottom: 5px;
+    background-color: blue;
 }
 
 .comm-interaction-button {
@@ -124,7 +127,7 @@ background-color: rgb(243, 137, 55);
 color: white;
 padding: 8px;
 border: none;
-width: 75px;
+width: 55px;
 cursor: pointer;
 }
 
