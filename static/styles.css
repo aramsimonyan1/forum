@@ -92,7 +92,7 @@ h2 {
     background-color: #f0f0f0;
 }
 
-#interactions {
+#post-interactions-area {
     width: 50%;
     display: grid;
     grid-template-columns: 95px 300px;
@@ -104,7 +104,6 @@ h2 {
     width: 30%;
     margin-left: 5px;
     margin-bottom: 5px;
-    background-color: blueviolet;
 }
 
 #commentDetails {
@@ -113,13 +112,12 @@ h2 {
 
 }
 
-.interactions {
+.comm-interactions-area {
     width: 20%;
     display: grid;
     grid-template-columns: 70px 300px;
     justify-items: normal;
     align-items: center;
-    background-color: blue;
 }
 
 .comm-interaction-button {

@@ -46,6 +46,13 @@ type Comment struct {
 	DislikesCount int
 }
 
+// PostInteraction structure
+type PostInteraction struct {
+	UserID string
+	PostID string
+	Action string
+}
+
 func initDB() {
 	var err error
 	db, err = sql.Open("sqlite3", "./forum.db")
@@ -82,6 +89,21 @@ func initDB() {
 		log.Fatal(err)
 	}
 
+	// Create post_interactions table
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS post_interactions (
+			user_id TEXT,
+			post_id TEXT,
+			action TEXT,
+			PRIMARY KEY (user_id, post_id),
+			FOREIGN KEY (user_id) REFERENCES users(id),
+			FOREIGN KEY (post_id) REFERENCES posts(id)
+		)
+	`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Create comments table
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS comments (
@@ -97,6 +119,15 @@ func initDB() {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+// getUserID retrieves the user ID from the given request
+func getUserID(r *http.Request) string {
+	cookie, err := r.Cookie("forum-session")
+	if err != nil {
+		return "" // Return an empty string if the cookie is not present or there's an error
+	}
+	return cookie.Value
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
@@ -531,7 +562,31 @@ func likePostHandler(w http.ResponseWriter, r *http.Request) {
 	// Retrieve post ID from the URL
 	postID := extractPostID(r.URL.Path)
 
-	// Implement the logic to increment the like count in the database
+	// Check if the user already disliked the post, reverse the interaction if true
+	if hasUserInteractedWithPost(getUserID(r), postID, "dislike") {
+		decreasePostDislikeCount(postID)
+		removePostInteraction(getUserID(r), postID)
+	} else if !hasUserInteractedWithPost(getUserID(r), postID, "like") {
+		// Increment the like count and add the interaction only if the user has not liked the post before
+		increasePostLikeCount(postID)
+		addPostInteraction(getUserID(r), postID, "like")
+	}
+
+	// Redirect back to the home page with an anchor to the updated post
+	http.Redirect(w, r, "/#post-"+postID, http.StatusSeeOther)
+}
+
+func hasUserInteractedWithPost(userID, postID, action string) bool {
+	var count int
+	err := db.QueryRow(`
+        SELECT COUNT(*)
+        FROM post_interactions
+        WHERE user_id = ? AND post_id = ? AND action = ?
+    `, userID, postID, action).Scan(&count)
+	return err == nil && count > 0
+}
+
+func increasePostLikeCount(postID string) {
 	_, err := db.Exec(`
         UPDATE posts
         SET likes_count = likes_count + 1
@@ -539,19 +594,59 @@ func likePostHandler(w http.ResponseWriter, r *http.Request) {
     `, postID)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
 	}
+}
 
-	// Redirect back to the home page with an anchor to the updated post
-	http.Redirect(w, r, "/#post-"+postID, http.StatusSeeOther)
+func decreasePostLikeCount(postID string) {
+	_, err := db.Exec(`
+        UPDATE posts
+        SET likes_count = likes_count - 1
+        WHERE id = ? AND likes_count > 0
+    `, postID)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+func addPostInteraction(userID, postID, action string) {
+	_, err := db.Exec(`
+        INSERT INTO post_interactions (user_id, post_id, action)
+        VALUES (?, ?, ?)
+    `, userID, postID, action)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+func removePostInteraction(userID, postID string) {
+	_, err := db.Exec(`
+        DELETE FROM post_interactions
+        WHERE user_id = ? AND post_id = ?
+    `, userID, postID)
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func dislikePostHandler(w http.ResponseWriter, r *http.Request) {
 	// Retrieve post ID from the URL
 	postID := extractPostID(r.URL.Path)
 
-	// Implement the logic to increment the dislike count in the database
+	// Check if the user already liked the post, reverse the interaction if true
+	if hasUserInteractedWithPost(getUserID(r), postID, "like") {
+		decreasePostLikeCount(postID)
+		removePostInteraction(getUserID(r), postID)
+	} else if !hasUserInteractedWithPost(getUserID(r), postID, "dislike") {
+		// Increment the dislike count and add the interaction only if the user has not disliked the post before
+		increasePostDislikeCount(postID)
+		addPostInteraction(getUserID(r), postID, "dislike")
+	}
+
+	// Redirect back to the home page with an anchor to the updated post
+	http.Redirect(w, r, "/#post-"+postID, http.StatusSeeOther)
+}
+
+func increasePostDislikeCount(postID string) {
 	_, err := db.Exec(`
         UPDATE posts
         SET dislikes_count = dislikes_count + 1
@@ -559,12 +654,18 @@ func dislikePostHandler(w http.ResponseWriter, r *http.Request) {
     `, postID)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
 	}
+}
 
-	// Redirect back to the home page
-	http.Redirect(w, r, "/#post-"+postID, http.StatusSeeOther)
+func decreasePostDislikeCount(postID string) {
+	_, err := db.Exec(`
+        UPDATE posts
+        SET dislikes_count = dislikes_count - 1
+        WHERE id = ? AND dislikes_count > 0
+    `, postID)
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 // extractPostID extracts the post ID from the URL path

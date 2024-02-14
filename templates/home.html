@@ -55,7 +55,7 @@
                     <p><span class="fixed-content">Created at: </span>{{.CreatedAt}}</p>
                     
                         <!-- Like and Dislike buttons for posts -->
-                        <div id="interactions">
+                        <div id="post-interactions-area">
                             <div class="interaction-button">
                                 <form action="/like/{{.ID}}" method="post">
                                     <button class="interaction-button" type="submit"><span class="fixed-content">Like</span></button>
@@ -78,7 +78,7 @@
                                 <p>Comment: {{.Content}}</p>
                                 <p>Created at: {{.CreatedAt}}</p>
                                 <!-- Like and Dislike buttons for comments -->
-                            <div class="interactions" id="comment-{{.ID}}">
+                            <div class="comm-interactions-area" id="comment-{{.ID}}">
                                 <div class="interaction-button">
                                     <form action="/like-comment/{{.ID}}" method="post">
                                         <button class="comm-interaction-button" type="submit">Like</button>
