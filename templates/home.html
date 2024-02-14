@@ -38,7 +38,7 @@
         <!-- Display posts for users who are logged in -->
         {{range .Posts}}
             <div class="posts-container">
-                <div class="post">
+                <div class="post" id="post-{{.ID}}">
                     <h3><a href="/post/{{.ID}}">{{.Title}}</a></h3>
                     <p>Category:
                         {{range $index, $category := .Categories}}
@@ -46,12 +46,28 @@
                             {{$category}}
                         {{end}}
                     </p>
-                    <p>Content: {{.Content}}</p>
+                    <p>Post: {{.Content}}</p>
                     <p>Created at: {{.CreatedAt}}</p>
+                    <p>Likes: {{.LikesCount}}, Dislikes: {{.DislikesCount}}</p>
+                    <!-- Like and Dislike buttons for posts -->
+                    <form action="/like/{{.ID}}" method="post">
+                        <button type="submit">Like</button>
+                    </form>
+                    <form action="/dislike/{{.ID}}" method="post">
+                        <button type="submit">Dislike</button>
+                    </form>
                     {{range .Comments}}
-                        <div>
-                            <p>{{.Content}}</p>
+                        <div class="comment" id="comment-{{.ID}}">
+                            <p>Comment: {{.Content}}</p>
                             <p>Created at: {{.CreatedAt}}</p>
+                            <p>Likes: {{.LikesCount}}, Dislikes: {{.DislikesCount}}</p>
+                            <!-- Like and Dislike buttons for comments -->
+                            <form action="/like-comment/{{.ID}}" method="post">
+                                <button type="submit">Like</button>
+                            </form>
+                            <form action="/dislike-comment/{{.ID}}" method="post">
+                                <button type="submit">Dislike</button>
+                            </form>
                         </div>
                     {{end}}
             
@@ -104,12 +120,14 @@
                 <div class="post">
                     <h3><a href="/post/{{.ID}}">{{.Title}}</a></h3>
                     <p>Category: {{range .Categories}}{{.}}, {{end}}</p>
-                    <p>Content: {{.Content}}</p>
+                    <p>Post: {{.Content}}</p>
                     <p>Created at: {{.CreatedAt}}</p>
+                    <p>Likes: {{.LikesCount}}, Dislikes: {{.DislikesCount}}</p>
                     {{range .Comments}}
                         <div>
-                            <p>{{.Content}}</p>
+                            <p>Comment: {{.Content}}</p>
                             <p>Created at: {{.CreatedAt}}</p>
+                            <p>Likes: {{.LikesCount}}, Dislikes: {{.DislikesCount}}</p>
                         </div>
                     {{end}}
                 </div>          

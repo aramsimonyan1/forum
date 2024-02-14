@@ -25,21 +25,25 @@ type User struct {
 
 // Post structure
 type Post struct {
-	ID         string
-	Title      string
-	Content    string
-	Categories []string
-	CreatedAt  time.Time
-	Comments   []Comment
-	IsLoggedIn bool // to check whether the user is logged in or not
+	ID            string
+	Title         string
+	Content       string
+	Categories    []string
+	CreatedAt     time.Time
+	LikesCount    int
+	DislikesCount int
+	Comments      []Comment
+	IsLoggedIn    bool // to check whether the user is logged in or not
 }
 
 // Comment structure
 type Comment struct {
-	ID        string
-	PostID    string
-	Content   string
-	CreatedAt time.Time
+	ID            string
+	PostID        string
+	Content       string
+	CreatedAt     time.Time
+	LikesCount    int
+	DislikesCount int
 }
 
 func initDB() {
@@ -69,7 +73,9 @@ func initDB() {
 			title TEXT,
 			content TEXT,
 			categories TEXT,
-			created_at TIMESTAMP
+			created_at TIMESTAMP,
+			likes_count INT DEFAULT 0,
+            dislikes_count INT DEFAULT 0
 		)
 	`)
 	if err != nil {
@@ -82,7 +88,10 @@ func initDB() {
 			id TEXT PRIMARY KEY,
 			post_id TEXT,
 			content TEXT,
-			created_at TIMESTAMP
+			created_at TIMESTAMP,
+			likes_count INT DEFAULT 0,
+            dislikes_count INT DEFAULT 0,
+            FOREIGN KEY (post_id) REFERENCES posts(id)
 		)
 	`)
 	if err != nil {
@@ -285,7 +294,7 @@ func getPostsFromDatabase() ([]Post, error) {
 	var posts []Post
 
 	rows, err := db.Query(`
-		SELECT id, title, content, categories, created_at
+		SELECT id, title, content, categories, created_at, likes_count, dislikes_count
 		FROM posts
 		ORDER BY created_at DESC
 	`)
@@ -297,7 +306,7 @@ func getPostsFromDatabase() ([]Post, error) {
 	for rows.Next() {
 		var post Post
 		var categoriesString string
-		err := rows.Scan(&post.ID, &post.Title, &post.Content, &categoriesString, &post.CreatedAt)
+		err := rows.Scan(&post.ID, &post.Title, &post.Content, &categoriesString, &post.CreatedAt, &post.LikesCount, &post.DislikesCount)
 		if err != nil {
 			return nil, err
 		}
@@ -322,7 +331,7 @@ func getCommentsForPost(postID string) ([]Comment, error) {
 	var comments []Comment
 
 	rows, err := db.Query(`
-		SELECT id, post_id, content, created_at
+		SELECT id, post_id, content, created_at, likes_count, dislikes_count
 		FROM comments
 		WHERE post_id = ?
 		ORDER BY created_at DESC
@@ -334,7 +343,7 @@ func getCommentsForPost(postID string) ([]Comment, error) {
 
 	for rows.Next() {
 		var comment Comment
-		err := rows.Scan(&comment.ID, &comment.PostID, &comment.Content, &comment.CreatedAt)
+		err := rows.Scan(&comment.ID, &comment.PostID, &comment.Content, &comment.CreatedAt, &comment.LikesCount, &comment.DislikesCount)
 		if err != nil {
 			return nil, err
 		}
@@ -361,6 +370,8 @@ func main() {
 	http.HandleFunc("/post/", viewPostHandler)
 	http.HandleFunc("/like/", likePostHandler)
 	http.HandleFunc("/dislike/", dislikePostHandler)
+	http.HandleFunc("/like-comment/", likeCommentHandler)
+	http.HandleFunc("/dislike-comment/", dislikeCommentHandler)
 
 	// Start the server
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -521,10 +532,19 @@ func likePostHandler(w http.ResponseWriter, r *http.Request) {
 	postID := extractPostID(r.URL.Path)
 
 	// Implement the logic to increment the like count in the database
-	// (you may need a separate table to store likes and dislikes)
+	_, err := db.Exec(`
+        UPDATE posts
+        SET likes_count = likes_count + 1
+        WHERE id = ?
+    `, postID)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
-	// Redirect back to the post page
-	http.Redirect(w, r, fmt.Sprintf("/post/%s", postID), http.StatusSeeOther)
+	// Redirect back to the home page with an anchor to the updated post
+	http.Redirect(w, r, "/#post-"+postID, http.StatusSeeOther)
 }
 
 func dislikePostHandler(w http.ResponseWriter, r *http.Request) {
@@ -532,10 +552,19 @@ func dislikePostHandler(w http.ResponseWriter, r *http.Request) {
 	postID := extractPostID(r.URL.Path)
 
 	// Implement the logic to increment the dislike count in the database
-	// (you may need a separate table to store likes and dislikes)
+	_, err := db.Exec(`
+        UPDATE posts
+        SET dislikes_count = dislikes_count + 1
+        WHERE id = ?
+    `, postID)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
-	// Redirect back to the post page
-	http.Redirect(w, r, fmt.Sprintf("/post/%s", postID), http.StatusSeeOther)
+	// Redirect back to the home page
+	http.Redirect(w, r, "/#post-"+postID, http.StatusSeeOther)
 }
 
 // extractPostID extracts the post ID from the URL path
@@ -548,9 +577,59 @@ func extractPostID(path string) string {
 	return ""
 }
 
+func likeCommentHandler(w http.ResponseWriter, r *http.Request) {
+	// Retrieve comment ID from the URL
+	commentID := extractCommentID(r.URL.Path)
+
+	// Implement the logic to increment the like count in the database
+	_, err := db.Exec(`
+        UPDATE comments
+        SET likes_count = likes_count + 1
+        WHERE id = ?
+    `, commentID)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Redirect back to the home page or the post page, depending on your design
+	http.Redirect(w, r, "/#comment-"+commentID, http.StatusSeeOther)
+}
+
+func dislikeCommentHandler(w http.ResponseWriter, r *http.Request) {
+	// Retrieve comment ID from the URL
+	commentID := extractCommentID(r.URL.Path)
+
+	// Implement the logic to increment the dislike count in the database
+	_, err := db.Exec(`
+        UPDATE comments
+        SET dislikes_count = dislikes_count + 1
+        WHERE id = ?
+    `, commentID)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Redirect back to the home page or the post page, depending on your design
+	http.Redirect(w, r, "/#comment-"+commentID, http.StatusSeeOther)
+}
+
+// extractCommentID extracts the post ID from the URL path
+func extractCommentID(path string) string {
+	// Assuming the URL path is in the format "/post/{id}" or "/like/{id}" or "/dislike/{id}"
+	parts := strings.Split(path, "/")
+	if len(parts) >= 3 {
+		return parts[2]
+	}
+	return ""
+}
+
 func getPosts() ([]Post, error) {
 	rows, err := db.Query(`
-		SELECT id, title, content, categories, created_at
+		SELECT id, title, content, categories, created_at, likes_count, dislikes_count
 		FROM posts
 		ORDER BY created_at DESC
 	`)
@@ -563,7 +642,7 @@ func getPosts() ([]Post, error) {
 	for rows.Next() {
 		var post Post
 		var categoriesString string
-		err := rows.Scan(&post.ID, &post.Title, &post.Content, &categoriesString, &post.CreatedAt)
+		err := rows.Scan(&post.ID, &post.Title, &post.Content, &categoriesString, &post.CreatedAt, &post.LikesCount, &post.DislikesCount)
 		if err != nil {
 			return nil, err
 		}
@@ -585,10 +664,10 @@ func getPostByID(postID string) (*Post, error) {
 	var post Post
 	var categoriesString string
 	err := db.QueryRow(`
-		SELECT id, title, content, categories, created_at
+		SELECT id, title, content, categories, created_at, likes_count, dislikes_count
 		FROM posts
 		WHERE id = ?
-	`, postID).Scan(&post.ID, &post.Title, &post.Content, &categoriesString, &post.CreatedAt)
+	`, postID).Scan(&post.ID, &post.Title, &post.Content, &categoriesString, &post.CreatedAt, &post.LikesCount, &post.DislikesCount)
 	if err != nil {
 		return nil, err
 	}
