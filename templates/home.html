@@ -40,6 +40,29 @@
             </div>
         </form>
 
+        <br><br> 
+        <!-- filtering options for logged in users -->
+        <form method="GET" action="/">
+            <label for="category">Filter by Category:</label>
+            <select name="category" id="category">
+                <option value="" {{if eq .SelectedCategory ""}}selected{{end}}>All Categories</option>
+                <option value="food" {{if eq .SelectedCategory "food"}}selected{{end}}>Food</option>
+                <option value="politics" {{if eq .SelectedCategory "politics"}}selected{{end}}>Politics</option>
+                <option value="sport" {{if eq .SelectedCategory "sport"}}selected{{end}}>Sport</option>
+                <option value="tech" {{if eq .SelectedCategory "tech"}}selected{{end}}>Tech</option>
+            </select>
+            <button type="submit">Filter</button>
+
+        </form>
+            <br><br>
+            <label for="createdFilter">Filter by Created Posts:</label>
+            <input type="checkbox" id="createdFilter" name="created" value="true">
+            <label for="likedFilter">Filter by Liked Posts:</label>
+            <input type="checkbox" id="likedFilter" name="liked" value="true">
+            <button type="submit">Apply Filters</button>
+        </form>
+
+
         <!-- Display posts for users who are logged in -->
         {{range .Posts}}
             <div class="posts-container">
@@ -142,6 +165,20 @@
                 </form>
             </div>
         </div>
+
+        <br><br>
+        <!-- filtering options for users who are not loggedin -->
+        <form method="GET" action="/">
+            <label for="category">Filter by Category:</label>
+            <select name="category" id="category">
+                <option value="" {{if eq .SelectedCategory ""}}selected{{end}}>All Categories</option>
+                <option value="food" {{if eq .SelectedCategory "food"}}selected{{end}}>Food</option>
+                <option value="politics" {{if eq .SelectedCategory "politics"}}selected{{end}}>Politics</option>
+                <option value="sport" {{if eq .SelectedCategory "sport"}}selected{{end}}>Sport</option>
+                <option value="tech" {{if eq .SelectedCategory "tech"}}selected{{end}}>Tech</option>
+            </select>
+            <button type="submit">Filter</button>
+        </form>
 
         <!-- Display posts for users who are not logged in -->
         <div class="posts-container">

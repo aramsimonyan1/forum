@@ -333,14 +333,26 @@ func authMiddleware(next http.Handler) http.Handler {
 }
 
 // getPostsFromDatabase retrieves all posts from the database
-func getPostsFromDatabase() ([]Post, error) {
+func getPostsFromDatabase(categoryFilter string) ([]Post, error) {
 	var posts []Post
 
-	rows, err := db.Query(`
-		SELECT id, title, content, categories, created_at, likes_count, dislikes_count
-		FROM posts
-		ORDER BY created_at DESC
-	`)
+	var query string
+	if categoryFilter != "" {
+		query = `
+            SELECT id, title, content, categories, created_at, likes_count, dislikes_count
+            FROM posts
+            WHERE ? IN (categories)
+            ORDER BY created_at DESC
+        `
+	} else {
+		query = `
+            SELECT id, title, content, categories, created_at, likes_count, dislikes_count
+            FROM posts
+            ORDER BY created_at DESC
+        `
+	}
+
+	rows, err := db.Query(query, categoryFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -366,6 +378,7 @@ func getPostsFromDatabase() ([]Post, error) {
 
 		posts = append(posts, post)
 	}
+
 	return posts, nil
 }
 
@@ -415,6 +428,7 @@ func main() {
 	http.HandleFunc("/dislike/", dislikePostHandler)
 	http.HandleFunc("/like-comment/", likeCommentHandler)
 	http.HandleFunc("/dislike-comment/", dislikeCommentHandler)
+	http.HandleFunc("/filter", categoryFilterHandler)
 
 	// Start the server
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -428,8 +442,11 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	// Debugging: Print the IsLoggedIn value
 	fmt.Println("IsLoggedIn:", isLoggedIn)
 
+	// Check if the request contains category filter parameters
+	categoryFilter := r.FormValue("category")
+
 	// Retrieve posts and comments for display
-	posts, err := getPostsFromDatabase()
+	posts, err := getPostsFromDatabase(categoryFilter)
 	if err != nil {
 		log.Printf("Error getting posts from the database: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -455,13 +472,18 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := tmpl.Execute(w, struct {
-		IsLoggedIn bool
-		Posts      []Post
+	// Pass additional data to the template, such as selected category for display
+	tmplData := struct {
+		IsLoggedIn       bool
+		Posts            []Post
+		SelectedCategory string
 	}{
-		IsLoggedIn: isLoggedIn,
-		Posts:      posts,
-	}); err != nil {
+		IsLoggedIn:       isLoggedIn,
+		Posts:            posts,
+		SelectedCategory: categoryFilter,
+	}
+
+	if err := tmpl.Execute(w, tmplData); err != nil {
 		log.Printf("Error executing template: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -508,6 +530,11 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Redirect to the home page
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func categoryFilterHandler(w http.ResponseWriter, r *http.Request) {
+	// Redirect to home page with category filter parameters
+	http.Redirect(w, r, "/?category="+r.FormValue("category"), http.StatusSeeOther)
 }
 
 func addCommentHandler(w http.ResponseWriter, r *http.Request) {
