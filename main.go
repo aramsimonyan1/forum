@@ -16,14 +16,12 @@ import (
 
 var db *sql.DB
 
-// User structure
 type User struct {
 	ID       string
 	Username string
 	Password string
 }
 
-// Post structure
 type Post struct {
 	ID            string
 	Title         string
@@ -33,17 +31,15 @@ type Post struct {
 	LikesCount    int
 	DislikesCount int
 	Comments      []Comment
-	IsLoggedIn    bool // to check whether the user is logged in or not
+	IsLoggedIn    bool
 }
 
-// PostInteraction structure
 type PostInteraction struct {
 	UserID string
 	PostID string
 	Action string
 }
 
-// Comment structure
 type Comment struct {
 	ID            string
 	PostID        string
@@ -53,7 +49,6 @@ type Comment struct {
 	DislikesCount int
 }
 
-// CommentInteraction structure
 type CommentInteraction struct {
 	UserID    string
 	CommentID string
@@ -67,7 +62,6 @@ func initDB() {
 		log.Fatal(err)
 	}
 
-	// Create users table
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS users (
 			id TEXT PRIMARY KEY,
@@ -80,7 +74,6 @@ func initDB() {
 		log.Fatal(err)
 	}
 
-	// Create posts table
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS posts (
 			id TEXT PRIMARY KEY,
@@ -96,7 +89,6 @@ func initDB() {
 		log.Fatal(err)
 	}
 
-	// Create post_interactions table
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS post_interactions (
 			user_id TEXT,
@@ -111,7 +103,6 @@ func initDB() {
 		log.Fatal(err)
 	}
 
-	// Create comments table
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS comments (
 			id TEXT PRIMARY KEY,
@@ -127,7 +118,6 @@ func initDB() {
 		log.Fatal(err)
 	}
 
-	// Create comment_interactions table
 	_, err = db.Exec(`
     CREATE TABLE IF NOT EXISTS comment_interactions (
         user_id TEXT,
@@ -143,13 +133,13 @@ func initDB() {
 	}
 }
 
-// getUserID retrieves the user ID from the given request
-func getUserID(r *http.Request) string {
-	cookie, err := r.Cookie("forum-session")
-	if err != nil {
-		return "" // Return an empty string if the cookie is not present or there's an error
+// Function retrieves the user ID from the given HTTP request
+func getUserID(r *http.Request) string { // Takes an http.Request object (r) as its parameter. This object represents an incoming HTTP request.
+	cookie, err := r.Cookie("forum-session") // Attempt to retrieve the "forum-session" cookie from the request
+	if err != nil {                          // if there is an error retrieving the cookie (e.g. the cookie is not present or there is some issue accessing it.)
+		return "" // Return an empty string (this indicates that the user ID could not be retrieved from the cookie)
 	}
-	return cookie.Value
+	return cookie.Value // return the value (user ID stored in the "forum-session" cookie)
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
@@ -200,12 +190,12 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Hash the password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		log.Println(err)
+	// Function takes password coverted into a byte slice and the cost factor, to securely hash a password using the bcrypt algorithm to be stored in the database.
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost) // bcrypt.DefaultCost is a constant provided by the bcrypt package, representing
+	if err != nil {                                                                          // the default cost factor that determines how computationally expensive the hash function is.
+		log.Println(err) // If there was an error, during the hashing process it logs the error using log.Println(err) and
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return // returns an HTTP 500 Internal Server Error response using http.Error.
 	}
 
 	// Insert the user into the database
