@@ -36,6 +36,13 @@ type Post struct {
 	IsLoggedIn    bool // to check whether the user is logged in or not
 }
 
+// PostInteraction structure
+type PostInteraction struct {
+	UserID string
+	PostID string
+	Action string
+}
+
 // Comment structure
 type Comment struct {
 	ID            string
@@ -46,11 +53,11 @@ type Comment struct {
 	DislikesCount int
 }
 
-// PostInteraction structure
-type PostInteraction struct {
-	UserID string
-	PostID string
-	Action string
+// CommentInteraction structure
+type CommentInteraction struct {
+	UserID    string
+	CommentID string
+	Action    string
 }
 
 func initDB() {
@@ -116,6 +123,21 @@ func initDB() {
             FOREIGN KEY (post_id) REFERENCES posts(id)
 		)
 	`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Create comment_interactions table
+	_, err = db.Exec(`
+    CREATE TABLE IF NOT EXISTS comment_interactions (
+        user_id TEXT,
+        comment_id TEXT,
+        action TEXT,
+        PRIMARY KEY (user_id, comment_id),
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (comment_id) REFERENCES comments(id)
+    )
+`)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -682,16 +704,14 @@ func likeCommentHandler(w http.ResponseWriter, r *http.Request) {
 	// Retrieve comment ID from the URL
 	commentID := extractCommentID(r.URL.Path)
 
-	// Implement the logic to increment the like count in the database
-	_, err := db.Exec(`
-        UPDATE comments
-        SET likes_count = likes_count + 1
-        WHERE id = ?
-    `, commentID)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+	// Check if the user already disliked the comment, reverse the interaction if true
+	if hasUserInteractedWithComment(getUserID(r), commentID, "dislike") {
+		decreaseCommentDislikeCount(commentID)
+		removeCommentInteraction(getUserID(r), commentID)
+	} else if !hasUserInteractedWithComment(getUserID(r), commentID, "like") {
+		// Increment the like count and add the interaction only if the user has not liked the comment before
+		increaseCommentLikeCount(commentID)
+		addCommentInteraction(getUserID(r), commentID, "like")
 	}
 
 	// Redirect back to the home page or the post page, depending on your design
@@ -702,16 +722,14 @@ func dislikeCommentHandler(w http.ResponseWriter, r *http.Request) {
 	// Retrieve comment ID from the URL
 	commentID := extractCommentID(r.URL.Path)
 
-	// Implement the logic to increment the dislike count in the database
-	_, err := db.Exec(`
-        UPDATE comments
-        SET dislikes_count = dislikes_count + 1
-        WHERE id = ?
-    `, commentID)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+	// Check if the user already liked the comment, reverse the interaction if true
+	if hasUserInteractedWithComment(getUserID(r), commentID, "like") {
+		decreaseCommentLikeCount(commentID)
+		removeCommentInteraction(getUserID(r), commentID)
+	} else if !hasUserInteractedWithComment(getUserID(r), commentID, "dislike") {
+		// Increment the dislike count and add the interaction only if the user has not disliked the comment before
+		increaseCommentDislikeCount(commentID)
+		addCommentInteraction(getUserID(r), commentID, "dislike")
 	}
 
 	// Redirect back to the home page or the post page, depending on your design
@@ -726,6 +744,87 @@ func extractCommentID(path string) string {
 		return parts[2]
 	}
 	return ""
+}
+
+// Update function to check if the user has interacted with a comment
+func hasUserInteractedWithComment(userID, commentID, action string) bool {
+	var count int
+	err := db.QueryRow(`
+        SELECT COUNT(*)
+        FROM comment_interactions
+        WHERE user_id = ? AND comment_id = ? AND action = ?
+    `, userID, commentID, action).Scan(&count)
+	return err == nil && count > 0
+}
+
+// Update function to increase comment like count
+func increaseCommentLikeCount(commentID string) {
+	_, err := db.Exec(`
+        UPDATE comments
+        SET likes_count = likes_count + 1
+        WHERE id = ?
+    `, commentID)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+// Update function to decrease comment like count
+func decreaseCommentLikeCount(commentID string) {
+	_, err := db.Exec(`
+        UPDATE comments
+        SET likes_count = likes_count - 1
+        WHERE id = ? AND likes_count > 0
+    `, commentID)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+// Update function to increase comment dislike count
+func increaseCommentDislikeCount(commentID string) {
+	_, err := db.Exec(`
+        UPDATE comments
+        SET dislikes_count = dislikes_count + 1
+        WHERE id = ?
+    `, commentID)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+// Update function to decrease comment dislike count
+func decreaseCommentDislikeCount(commentID string) {
+	_, err := db.Exec(`
+        UPDATE comments
+        SET dislikes_count = dislikes_count - 1
+        WHERE id = ? AND dislikes_count > 0
+    `, commentID)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+// Update function to add comment interaction
+func addCommentInteraction(userID, commentID, action string) {
+	_, err := db.Exec(`
+        INSERT INTO comment_interactions (user_id, comment_id, action)
+        VALUES (?, ?, ?)
+    `, userID, commentID, action)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+// Update function to remove comment interaction
+func removeCommentInteraction(userID, commentID string) {
+	_, err := db.Exec(`
+        DELETE FROM comment_interactions
+        WHERE user_id = ? AND comment_id = ?
+    `, userID, commentID)
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func getPosts() ([]Post, error) {
