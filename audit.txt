@@ -1,26 +1,26 @@
 Authentication
-    YES     Are an email and a password asked for in the resgistration?
-    YES     Does the project detect if the email or password are wrong?
-    YES     Does the project detect if the email or user name is already taken in the registration?
+    YESYES     Are an email and a password asked for in the resgistration?
+    YESYES     Does the project detect if the email or password are wrong?
+    YESYES     Does the project detect if the email or user name is already taken in the registration?
 
 Try to register as a new user in the forum.
-    YES     Is it possible to register?
+    YESYES     Is it possible to register?
 
 Try to login with the user you created.
-    YES     Can you login and have all the rights of a registered user?
+    YESYES     Can you login and have all the rights of a registered user?
 
 Try to login without any credentials.
-    YES     Does it show a warning message?
-    YES     Are sessions present in the project?
+    YESYES     Does it show a warning message?
+    YESYES     Are sessions present in the project?
 
 Try opening two different browsers and login into one of them. Refresh the other browser.
-    Can you confirm that the browser non logged remains unregistered?
+    YESYES     Can you confirm that the browser non logged remains unregistered?
 
 Try opening two different browsers and login into both of them. Refresh both browsers.
-    Can you confirm that only one of those browsers has an active session?
+    ?? Can you confirm that only one of those browsers has an active session?
 
 Try opening two different browsers and login into one of them. Then create a new post or just add a comment. Refresh both browsers.
-    Does it present the comment/post on both browsers?
+    when you login on second then YES     Does it present the comment/post on both browsers?
 
 SQLite
     YES     Does the code contain at least one CREATE query?
@@ -28,10 +28,10 @@ SQLite
     YES     Does the code contain at least one SELECT query?
 
 Try registering in the forum, open the database with sqlite3 <database_name.db> and perform a query to select all the users (Example: SELECT * FROM users;).
-    Does it present the user you created?
+    YES     Does it present the user you created?
 
 Try creating a post in the forum, open the database with sqlite3 <database_name.db> and perform a query to select all the users (Example: SELECT * FROM post;).
-    Does it present the post you created?
+    YES     Does it present the post you created?
 
 Try creating a comment in the forum, open the database with sqlite3 <database_name.db> and perform a query to select all the users (Example: SELECT * FROM comment;).
     Does it present the comment you created?
@@ -71,13 +71,13 @@ Enter the forum as a registered user, go to a post and try to create a comment f
     YES     Were you able to create the comment?
 
 Enter the forum as a registered user, go to a post and try to create an empty comment for it.
-    ?YES?     Were you forbidden from creating the empty comment?
+    YES?     Were you forbidden from creating the empty comment?
 
 Enter the forum as a registered user and try to create a post.
     YES     Were you able to create a post?
 
 Enter the forum as a registered user and try to create an empty post.
-    ?YES?     Were you forbidden from creating the empty post?
+    YES?     Were you forbidden from creating the empty post?
 
 Try creating a post as a registered user and try to choose several categories for that post.
     YES     Were you able to choose several categories for that post?
@@ -98,21 +98,21 @@ Enter the forum as a registered user and try to like and then dislike the same p
     YES      Can you confirm that it is not possible that the post is liked and disliked at the same time?
 
 Enter the forum as a registered user and try seeing all of your created posts.
-    Does it present the expected posts?
+    YES?     Does it present the expected posts?
 
 Enter the forum as a registered user and try seeing all of your liked posts.
-    Does it present the expected posts?
+    YES?     Does it present the expected posts?
 
 Navigate to a post of your choice and see its comments.
     YES     Are all users (registered or not) able to see the number of likes and dislikes that comment has?
 
 Try seeing all posts from one category using the filter.
-    Are all posts displayed from that category?
-    YES?    Did the server behaved as expected?(did not crashed)
-    YES?    Does the server use the right HTTP method?
+    YES     Are all posts displayed from that category?
+    YES     Did the server behaved as expected?(did not crashed)
+    YES     Does the server use the right HTTP method?
     Are all the pages working? (Absence of 404 page?)
-    YES?    Does the project handle HTTP status 400 - Bad Requests?
-    YES?    Does the project handle HTTP status 500 - Internal Server Errors?
+    YES     Does the project handle HTTP status 400 - Bad Requests?
+    YES     Does the project handle HTTP status 500 - Internal Server Errors?
     Are only the allowed packages being used?
     As an auditor, is this project up to every standard? If not, why are you failing the project?(Empty Work, Incomplete Work, Invalid compilation, Cheating, Crashing, Leaks)
 

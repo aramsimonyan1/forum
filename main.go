@@ -65,9 +65,20 @@ func initDB() {
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS users (
 			id TEXT PRIMARY KEY,
-			email TEXT,
+			email TEXT UNIQUE,
 			username TEXT,
 			password TEXT
+		)
+	`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS sessions (
+			session_id TEXT PRIMARY KEY,
+			user_email TEXT,
+			FOREIGN KEY (user_email) REFERENCES users(email)
 		)
 	`)
 	if err != nil {
@@ -138,10 +149,27 @@ func initDB() {
 // Function retrieves the user ID from the given HTTP request
 func getUserID(r *http.Request) string { // Takes an http.Request object (r) as its parameter. This object represents an incoming HTTP request.
 	cookie, err := r.Cookie("forum-session") // Attempt to retrieve the "forum-session" cookie from the request
-	if err != nil {                          // if there is an error retrieving the cookie (e.g. the cookie is not present or there is some issue accessing it.)
+	if err != nil || cookie.Value == "" {    // if there is an error retrieving the cookie (e.g. the cookie is not present or there is some issue accessing it.)
 		return "" // Return an empty string (this indicates that the user ID could not be retrieved from the cookie)
 	}
-	return cookie.Value // return the value (user ID stored in the "forum-session" cookie)
+	// Retrieve the user ID associated with the session from the database
+	var userID string
+	err = db.QueryRow(`
+        SELECT id
+        FROM users
+        WHERE email = (
+            SELECT user_email
+            FROM sessions
+            WHERE session_id = ?
+        )
+    `, cookie.Value).Scan(&userID)
+
+	if err != nil {
+		log.Println(err)
+		return "" // Unable to retrieve user ID
+	}
+
+	return userID
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
@@ -293,8 +321,20 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// After successful login, create a new session ID and set it in a cookie
+	// After successful login, create a new session ID
 	sessionID := uuid.New().String()
+
+	// Store the user's email in the session for consistent identification
+	_, err = db.Exec(`
+        INSERT INTO sessions (session_id, user_email)
+        VALUES (?, ?)
+    `, sessionID, email)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
 	http.SetCookie(w, &http.Cookie{
 		Name:    "forum-session",
 		Value:   sessionID,
