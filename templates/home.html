@@ -43,7 +43,7 @@
         <br><br> 
         <!-- filtering options for logged in users -->
         <form method="GET" action="/">
-            <label for="category">Filter by Category:</label>
+            <label for="category"><button type="submit">Filter by category: </button></label>
             <select name="category" id="category">
                 <option value="" {{if eq .SelectedCategory ""}}selected{{end}}>All Categories</option>
                 <option value="food" {{if eq .SelectedCategory "food"}}selected{{end}}>Food</option>
@@ -51,17 +51,14 @@
                 <option value="sport" {{if eq .SelectedCategory "sport"}}selected{{end}}>Sport</option>
                 <option value="tech" {{if eq .SelectedCategory "tech"}}selected{{end}}>Tech</option>
             </select>
-            <button type="submit">Filter</button>
-
         </form>
-            <br><br>
-            <label for="createdFilter">Filter by Created Posts:</label>
-            <input type="checkbox" id="createdFilter" name="created" value="true">
-            <label for="likedFilter">Filter by Liked Posts:</label>
-            <input type="checkbox" id="likedFilter" name="liked" value="true">
-            <button type="submit">Apply Filters</button>
-        </form>
+        <br><br>
 
+        <!-- Add two buttons for user's posts and liked posts -->
+        <form method="get" action="/">
+            <button type="submit" name="filter" value="user">My Posts</button>
+            <button type="submit" name="filter" value="liked">Liked Posts</button>
+        </form>
 
         <!-- Display posts for users who are logged in -->
         {{range .Posts}}
@@ -169,7 +166,7 @@
         <br><br>
         <!-- filtering options for users who are not loggedin -->
         <form method="GET" action="/">
-            <label for="category">Filter by Category:</label>
+            <label for="category"><button type="submit">Filter by category: </button></label>
             <select name="category" id="category">
                 <option value="" {{if eq .SelectedCategory ""}}selected{{end}}>All Categories</option>
                 <option value="food" {{if eq .SelectedCategory "food"}}selected{{end}}>Food</option>
@@ -177,7 +174,6 @@
                 <option value="sport" {{if eq .SelectedCategory "sport"}}selected{{end}}>Sport</option>
                 <option value="tech" {{if eq .SelectedCategory "tech"}}selected{{end}}>Tech</option>
             </select>
-            <button type="submit">Filter</button>
         </form>
 
         <!-- Display posts for users who are not logged in -->

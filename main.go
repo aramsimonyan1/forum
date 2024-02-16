@@ -77,12 +77,14 @@ func initDB() {
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS posts (
 			id TEXT PRIMARY KEY,
+			user_id TEXT,
 			title TEXT,
 			content TEXT,
 			categories TEXT,
 			created_at TIMESTAMP,
 			likes_count INT DEFAULT 0,
-            dislikes_count INT DEFAULT 0
+            dislikes_count INT DEFAULT 0,
+			FOREIGN KEY (user_id) REFERENCES users(id)
 		)
 	`)
 	if err != nil {
@@ -332,16 +334,29 @@ func authMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// getPostsFromDatabase retrieves all posts from the database
 func getPostsFromDatabase(categoryFilter string) ([]Post, error) {
 	var posts []Post
 
 	var query string
+	var args []interface{}
+
 	if categoryFilter != "" {
+		// Split the categoryFilter into individual categories
+		categories := strings.Split(categoryFilter, ",")
+
+		// Build the query dynamically based on the number of categories
 		query = `
             SELECT id, title, content, categories, created_at, likes_count, dislikes_count
             FROM posts
-            WHERE ? IN (categories)
+            WHERE `
+		for i, category := range categories {
+			if i > 0 {
+				query += " OR "
+			}
+			query += "INSTR(categories, ?) > 0"
+			args = append(args, category)
+		}
+		query += `
             ORDER BY created_at DESC
         `
 	} else {
@@ -352,7 +367,7 @@ func getPostsFromDatabase(categoryFilter string) ([]Post, error) {
         `
 	}
 
-	rows, err := db.Query(query, categoryFilter)
+	rows, err := db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -445,8 +460,21 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if the request contains category filter parameters
 	categoryFilter := r.FormValue("category")
 
-	// Retrieve posts and comments for display
-	posts, err := getPostsFromDatabase(categoryFilter)
+	// Retrieve posts and comments for display based on category filter
+	var posts []Post
+
+	switch filter := r.FormValue("filter"); filter {
+	case "user":
+		// Retrieve posts created by the user
+		posts, err = getPostsByUser(getUserID(r))
+	case "liked":
+		// Retrieve posts liked by the user
+		posts, err = getLikedPosts(getUserID(r))
+	default:
+		// Retrieve all posts
+		posts, err = getPostsFromDatabase(categoryFilter)
+	}
+
 	if err != nil {
 		log.Printf("Error getting posts from the database: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -490,6 +518,85 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// getPostsByUser retrieves posts created by a specific user from the database
+func getPostsByUser(userID string) ([]Post, error) {
+	var posts []Post
+
+	rows, err := db.Query(`
+		SELECT id, title, content, categories, created_at, likes_count, dislikes_count
+		FROM posts
+		WHERE user_id = ?
+		ORDER BY created_at DESC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var post Post
+		var categoriesString string
+		err := rows.Scan(&post.ID, &post.Title, &post.Content, &categoriesString, &post.CreatedAt, &post.LikesCount, &post.DislikesCount)
+		if err != nil {
+			return nil, err
+		}
+
+		// Split the categories string into a slice
+		post.Categories = strings.Split(categoriesString, ",")
+
+		// Retrieve comments for the post
+		comments, err := getCommentsForPost(post.ID)
+		if err != nil {
+			return nil, err
+		}
+		post.Comments = comments
+
+		posts = append(posts, post)
+	}
+
+	return posts, nil
+}
+
+// getLikedPosts retrieves posts liked by a specific user from the database
+func getLikedPosts(userID string) ([]Post, error) {
+	var posts []Post
+
+	rows, err := db.Query(`
+		SELECT p.id, p.title, p.content, p.categories, p.created_at, p.likes_count, p.dislikes_count
+		FROM posts p
+		INNER JOIN post_interactions pi ON p.id = pi.post_id
+		WHERE pi.user_id = ? AND pi.action = 'like'
+		ORDER BY p.created_at DESC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var post Post
+		var categoriesString string
+		err := rows.Scan(&post.ID, &post.Title, &post.Content, &categoriesString, &post.CreatedAt, &post.LikesCount, &post.DislikesCount)
+		if err != nil {
+			return nil, err
+		}
+
+		// Split the categories string into a slice
+		post.Categories = strings.Split(categoriesString, ",")
+
+		// Retrieve comments for the post
+		comments, err := getCommentsForPost(post.ID)
+		if err != nil {
+			return nil, err
+		}
+		post.Comments = comments
+
+		posts = append(posts, post)
+	}
+
+	return posts, nil
+}
+
 func createPostHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if the user is logged in
 	cookie, err := r.Cookie("forum-session")
@@ -519,9 +626,9 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Insert the post into the database
 	_, err = db.Exec(`
-		INSERT INTO posts (id, title, content, categories, created_at)
-		VALUES (?, ?, ?, ?, ?)
-	`, postID, title, content, strings.Join(categories, ","), time.Now().Format("2006-01-02 15:04:05"))
+		INSERT INTO posts (id, user_id, title, content, categories, created_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, postID, getUserID(r), title, content, strings.Join(categories, ","), time.Now().Format("2006-01-02 15:04:05"))
 	if err != nil {
 		log.Printf("Error inserting post into the database: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
