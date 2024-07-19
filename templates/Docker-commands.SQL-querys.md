@@ -1,8 +1,49 @@
-sqlite3 forum.db          # To start an SQLite shell. Once you are in the SQLite shell,
-.tables                   # Check the tables in your database
-.schema users             # Check the schema of your "users" table
-.exit                     # Exit the SQLite shell
+# To build an image of app with (example) my-forum-app name:
+  docker build -t my-forum-app .
 
+# Run the Docker container:
+  docker run -p 8080:8080 my-forum-app
+
+# Lists running containers
+  docker ps -q
+
+# Lists stopped containers
+  docker ps -a
+
+# Stops given container
+  docker stop CONTAINER ID
+
+# Removes given container
+  docker rm CONTAINER ID
+
+# Forcefully remove all containers (stopping them if necessary)
+  docker rm -f $(docker ps -a -q)
+
+# Lists docker images 
+  docker image ls
+
+# Remove Specific Docker Images
+  docker rmi IMAGE_ID
+
+# Remove all images:
+  docker rmi $(docker images -q)
+
+# If you have dangling images (images without tags). You can remove them with:
+  docker image prune
+
+
+
+# To start an SQLite shell. Once you are in the SQLite shell,
+  sqlite3 forum.db      
+
+# Check the tables in your database
+  .tables                   
+  
+# Check the schema of your "users" table
+  .schema users             
+  
+# Exit the SQLite shell
+  .exit                     
 
 SELECT * FROM users;
 DELETE FROM users WHERE email IS NULL OR email = '';
