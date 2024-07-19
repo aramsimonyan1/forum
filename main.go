@@ -165,11 +165,24 @@ func getUserID(r *http.Request) string { // Takes an http.Request object (r) as 
     `, cookie.Value).Scan(&userID)
 
 	if err != nil {
-		log.Println(err)
-		return "" // Unable to retrieve user ID
+		// Handle the case where no row is found (user not logged in)
+		if err == sql.ErrNoRows {
+			return "" // Return an empty string to indicate authentication failure
+		}
+		log.Println(err) // Log other errors
+		return ""        // Return an empty string in case of other errors as well
 	}
 
 	return userID
+}
+
+// Invalidate existing sessions for a user
+func invalidateSessionsForUser(email string) error {
+	_, err := db.Exec(`
+		DELETE FROM sessions
+		WHERE user_email = ?
+	`, email)
+	return err
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
@@ -180,9 +193,9 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse form data
+	// Parse form data. Handle HTTP status 400 - Bad Requests
 	err := r.ParseForm()
-	if err != nil {
+	if err != nil { // ...if the form data cannot be parsed..
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
@@ -302,6 +315,14 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Invalidate existing sessions for the user
+	err = invalidateSessionsForUser(email)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
 	// Compare the provided password with the hashed password
 	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	if err != nil {
@@ -323,6 +344,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	// After successful login, create a new session ID
 	sessionID := uuid.New().String()
+	log.Printf("User %s logged in. New session ID: %s\n", email, sessionID)
 
 	// Store the user's email in the session for consistent identification
 	_, err = db.Exec(`
@@ -347,6 +369,21 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	// Get the session ID from the cookie
+	sessionCookie, err := r.Cookie("forum-session")
+	if err != nil {
+		log.Println("Error getting session cookie:", err)
+	} else {
+		sessionID := sessionCookie.Value
+		log.Printf("Logging out user with session ID: %s\n", sessionID)
+
+		// Delete the session from the database
+		_, err = db.Exec(`DELETE FROM sessions WHERE session_id = ?`, sessionID)
+		if err != nil {
+			log.Printf("Error deleting session from database: %v", err)
+		}
+	}
+
 	// Expire the cookie to delete the session
 	http.SetCookie(w, &http.Cookie{
 		Name:    "forum-session",
@@ -357,21 +394,6 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Redirect to the home page
 	http.Redirect(w, r, "/", http.StatusSeeOther)
-}
-
-func authMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Retrieve user ID from the cookie
-		cookie, err := r.Cookie("forum-session")
-		if err != nil || cookie.Value == "" {
-			// User is not authenticated, redirect to home page
-			http.Redirect(w, r, "/", http.StatusSeeOther)
-			return
-		}
-
-		// User is authenticated, proceed to the next handler
-		next.ServeHTTP(w, r)
-	})
 }
 
 func getPostsFromDatabase(categoryFilter string) ([]Post, error) {
@@ -464,38 +486,36 @@ func getCommentsForPost(postID string) ([]Comment, error) {
 	return comments, nil
 }
 
-func main() {
-	// Initialize the database
-	initDB()
-
-	// Serve static files
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
-
-	// Create routes
-	http.HandleFunc("/", homeHandler)
-	http.HandleFunc("/register", registerHandler)
-	http.HandleFunc("/login", loginHandler)
-	http.HandleFunc("/logout", logoutHandler)
-	http.HandleFunc("/create-post", createPostHandler)
-	http.HandleFunc("/add-comment/", addCommentHandler)
-	http.HandleFunc("/post/", viewPostHandler)
-	http.HandleFunc("/like/", likePostHandler)
-	http.HandleFunc("/dislike/", dislikePostHandler)
-	http.HandleFunc("/like-comment/", likeCommentHandler)
-	http.HandleFunc("/dislike-comment/", dislikeCommentHandler)
-	http.HandleFunc("/filter", categoryFilterHandler)
-
-	// Start the server
-	log.Fatal(http.ListenAndServe(":8080", nil))
-}
-
 func homeHandler(w http.ResponseWriter, r *http.Request) {
-	// Check if the user is logged in
+	// Check if there is a session cookie
 	cookie, err := r.Cookie("forum-session")
-	isLoggedIn := err == nil && cookie.Value != ""
+	isLoggedIn := false // Initialize isLoggedIn to false
 
-	// Debugging: Print the IsLoggedIn value
-	fmt.Println("IsLoggedIn:", isLoggedIn)
+	if err != nil || cookie.Value == "" {
+		// No cookie, user is not logged in
+		log.Println("No session cookie found. User is not logged in.")
+	} else {
+		// There is a cookie, check if the session is valid
+		var exists bool
+		err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM sessions WHERE session_id = ?)",
+			cookie.Value).Scan(&exists)
+
+		if err != nil {
+			log.Printf("Error checking session validity: %v", err)
+		} else if !exists {
+			log.Printf("Session not found in database. Invalidating cookie.")
+			http.SetCookie(w, &http.Cookie{
+				Name:    "forum-session",
+				Value:   "",
+				Expires: time.Now(),
+				Path:    "/",
+			})
+		} else {
+			// Session is valid
+			isLoggedIn = true
+			log.Println("Session is valid. User is logged in.")
+		}
+	}
 
 	// Check if the request contains category filter parameters
 	categoryFilter := r.FormValue("category")
@@ -638,18 +658,18 @@ func getLikedPosts(userID string) ([]Post, error) {
 }
 
 func createPostHandler(w http.ResponseWriter, r *http.Request) {
-	// Check if the user is logged in
-	cookie, err := r.Cookie("forum-session")
-	if err != nil || cookie.Value == "" {
+	// Get the user ID
+	userID := getUserID(r)
+
+	// Check if the user is logged in (based on the retrieved userID)
+	if userID == "" {
 		// User is not logged in, redirect to the login page
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
-	// User is logged in, proceed with post creation
-
-	// Parse the form data
-	err = r.ParseForm()
+	// User is logged in, proceed with post creation   // Parse the form data
+	err := r.ParseForm()
 	if err != nil {
 		log.Printf("Error parsing form data: %v", err)
 		http.Error(w, "Bad Request", http.StatusBadRequest)
@@ -668,7 +688,7 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 	_, err = db.Exec(`
 		INSERT INTO posts (id, user_id, title, content, categories, created_at)
 		VALUES (?, ?, ?, ?, ?, ?)
-	`, postID, getUserID(r), title, content, strings.Join(categories, ","), time.Now().Format("2006-01-02 15:04:05"))
+	`, postID, getUserID(r), title, content, strings.Join(categories, ","), time.Now())
 	if err != nil {
 		log.Printf("Error inserting post into the database: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -745,8 +765,13 @@ func viewPostHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func likePostHandler(w http.ResponseWriter, r *http.Request) {
-	// Retrieve post ID from the URL
-	postID := extractPostID(r.URL.Path)
+	userID := getUserID(r) // Get the user ID
+	if userID == "" {      // Check if the user is logged in (based on the retrieved userID)
+		http.Redirect(w, r, "/", http.StatusSeeOther) // Redirect to the login page
+		return
+	}
+
+	postID := extractPostID(r.URL.Path) // Retrieve post ID from the URL
 
 	// Check if the user already disliked the post, reverse the interaction if true
 	if hasUserInteractedWithPost(getUserID(r), postID, "dislike") {
@@ -758,7 +783,7 @@ func likePostHandler(w http.ResponseWriter, r *http.Request) {
 		addPostInteraction(getUserID(r), postID, "like")
 	}
 
-	// Redirect back to the home page with an anchor to the updated post
+	// Redirect back to the referring page or a default location
 	http.Redirect(w, r, "/#post-"+postID, http.StatusSeeOther)
 }
 
@@ -815,8 +840,13 @@ func removePostInteraction(userID, postID string) {
 }
 
 func dislikePostHandler(w http.ResponseWriter, r *http.Request) {
-	// Retrieve post ID from the URL
-	postID := extractPostID(r.URL.Path)
+	userID := getUserID(r) // Get the user ID
+	if userID == "" {      // Check if the user is logged in (based on the retrieved userID)
+		http.Redirect(w, r, "/", http.StatusSeeOther) // Redirect to the login page
+		return
+	}
+
+	postID := extractPostID(r.URL.Path) // Retrieve post ID from the URL
 
 	// Check if the user already liked the post, reverse the interaction if true
 	if hasUserInteractedWithPost(getUserID(r), postID, "like") {
@@ -991,33 +1021,6 @@ func removeCommentInteraction(userID, commentID string) {
 	}
 }
 
-func getPosts() ([]Post, error) {
-	rows, err := db.Query(`
-		SELECT id, title, content, categories, created_at, likes_count, dislikes_count
-		FROM posts
-		ORDER BY created_at DESC
-	`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var posts []Post
-	for rows.Next() {
-		var post Post
-		var categoriesString string
-		err := rows.Scan(&post.ID, &post.Title, &post.Content, &categoriesString, &post.CreatedAt, &post.LikesCount, &post.DislikesCount)
-		if err != nil {
-			return nil, err
-		}
-		// Convert the comma-separated string to a slice of strings
-		post.Categories = splitCategories(categoriesString)
-		posts = append(posts, post)
-	}
-
-	return posts, nil
-}
-
 // splitCategories splits a comma-separated string into a slice of strings
 func splitCategories(categoriesString string) []string {
 	return strings.Split(categoriesString, ",")
@@ -1040,4 +1043,30 @@ func getPostByID(postID string) (*Post, error) {
 	post.Categories = splitCategories(categoriesString)
 
 	return &post, nil
+}
+
+func main() {
+	// Initialize the database
+	initDB()
+
+	// Serve static files
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+
+	// Public Routes
+	http.HandleFunc("/", homeHandler)
+	http.HandleFunc("/home", homeHandler)
+	http.HandleFunc("/register", registerHandler)
+	http.HandleFunc("/login", loginHandler)
+	http.HandleFunc("/logout", logoutHandler)
+	http.HandleFunc("/create-post", createPostHandler)
+	http.HandleFunc("/add-comment/{postID}", addCommentHandler)
+	http.HandleFunc("/post/", viewPostHandler)
+	http.HandleFunc("/like/{postID}", likePostHandler)
+	http.HandleFunc("/dislike/{postID}", dislikePostHandler)
+	http.HandleFunc("/like-comment/{postID}", likeCommentHandler)
+	http.HandleFunc("/dislike-comment/{postID}", dislikeCommentHandler)
+	http.HandleFunc("/filter", categoryFilterHandler)
+
+	// Start the server
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }

@@ -16,7 +16,7 @@
             </form>
         </div>
 
-        <!-- Post creation form or users who are logged in-->
+        <!-- Post creation form for users who are logged in-->
         <h2>Create a Post</h2>
         <form action="/create-post" method="post">
             <label for="title"></label>
@@ -45,7 +45,7 @@
         <form method="GET" action="/">
             <label for="category"><button type="submit">Filter by category: </button></label>
             <select name="category" id="category">
-                <option value="" {{if eq .SelectedCategory ""}}selected{{end}}>All Categories</option>
+                <option value="" {{if eq .SelectedCategory ""}}selected{{end}}>All categories</option>
                 <option value="food" {{if eq .SelectedCategory "food"}}selected{{end}}>Food</option>
                 <option value="politics" {{if eq .SelectedCategory "politics"}}selected{{end}}>Politics</option>
                 <option value="sport" {{if eq .SelectedCategory "sport"}}selected{{end}}>Sport</option>
@@ -54,7 +54,7 @@
         </form>
         <br><br>
 
-        <!-- Add two buttons for user's posts and liked posts -->
+        <!-- Add two buttons for user's posts, and liked posts -->
         <form method="get" action="/">
             <button type="submit" name="filter" value="user">My Posts</button>
             <button type="submit" name="filter" value="liked">Liked Posts</button>
@@ -64,7 +64,7 @@
         {{range .Posts}}
             <div class="posts-container">
                 <div class="post" id="post-{{.ID}}">
-                    <p><span class="fixed-content">Title: </span><a href="/post/{{.ID}}">{{.Title}}</a></p> 
+                    <p><span class="fixed-content">Title: </span><a href="/post/{{.ID}}" target="_blank">{{.Title}}</a></p> 
                     <p><span class="fixed-content">Category:</span>
                         {{range $index, $category := .Categories}}
                             {{if $index}}, {{end}}
@@ -72,7 +72,7 @@
                         {{end}}
                     </p>
                     <p><span class="fixed-content">Content: </span>{{.Content}}</p>
-                    <p><span class="fixed-content">Created at: </span>{{.CreatedAt}}</p>
+                    <p><span class="fixed-content">Created at: </span>{{.CreatedAt.Format "15:04:05 02/01/2006"}}</p>
                     
                         <!-- Like and Dislike buttons for posts -->
                         <div id="post-interactions-area">
@@ -96,7 +96,7 @@
                     {{range .Comments}}
                         <div id="commentDetails"> 
                                 <p>Comment: {{.Content}}</p>
-                                <p>Created at: {{.CreatedAt}}</p>
+                                <p>Created at: {{.CreatedAt.Format "15:04:05 02/01/2006"}}</p>
                                 <!-- Like and Dislike buttons for comments -->
                             <div class="comm-interactions-area" id="comment-{{.ID}}">
                                 <div class="interaction-button">
@@ -168,7 +168,7 @@
         <form method="GET" action="/">
             <label for="category"><button type="submit">Filter by category: </button></label>
             <select name="category" id="category">
-                <option value="" {{if eq .SelectedCategory ""}}selected{{end}}>All Categories</option>
+                <option value="" {{if eq .SelectedCategory ""}}selected{{end}}>All categories</option>
                 <option value="food" {{if eq .SelectedCategory "food"}}selected{{end}}>Food</option>
                 <option value="politics" {{if eq .SelectedCategory "politics"}}selected{{end}}>Politics</option>
                 <option value="sport" {{if eq .SelectedCategory "sport"}}selected{{end}}>Sport</option>
@@ -180,15 +180,15 @@
         <div class="posts-container">
             {{range .Posts}}
                 <div class="post">
-                    <h3><a href="/post/{{.ID}}">{{.Title}}</a></h3>
+                    <p>Title: <a href="/post/{{.ID}}" target="_blank">{{.Title}}</a></p>
                     <p>Category: {{range .Categories}}{{.}}, {{end}}</p>
                     <p>Content: {{.Content}}</p>
-                    <p>Created at: {{.CreatedAt}}</p>
+                    <p>Created at: {{.CreatedAt.Format "15:04:05 02/01/2006"}}</p>
                     <p>Likes: {{.LikesCount}}, Dislikes: {{.DislikesCount}}</p>
                     {{range .Comments}}
                         <div>
                             <p>Comment: {{.Content}}</p>
-                            <p>Created at: {{.CreatedAt}}</p>
+                            <p>Created at: {{.CreatedAt.Format "15:04:05 02/01/2006"}}</p>
                             <p>Likes: {{.LikesCount}}, Dislikes: {{.DislikesCount}}</p>
                         </div>
                     {{end}}

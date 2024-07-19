@@ -1,4 +1,7 @@
 # forum
+    1. go run main.go
+    2. open browser with url: localhost:8080
+    3. register user > login > ...
 
 ## Objectives
     This project consists in creating a web forum that allows:
