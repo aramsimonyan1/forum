@@ -1,4 +1,4 @@
-# docker build -t my-forum-app
+# docker build -t my-forum-app .
 # docker image ls
 
 # Run the Docker container:

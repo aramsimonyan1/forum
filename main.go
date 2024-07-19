@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	_ "github.com/mattn/go-sqlite3" // Import SQLite driver
+	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -365,7 +365,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	// Redirect to the home page after successful login
-	http.Redirect(w, r, "/?message=Login%20successful", http.StatusSeeOther)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -1054,7 +1054,6 @@ func main() {
 
 	// Public Routes
 	http.HandleFunc("/", homeHandler)
-	http.HandleFunc("/home", homeHandler)
 	http.HandleFunc("/register", registerHandler)
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/logout", logoutHandler)
