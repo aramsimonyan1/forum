@@ -1,8 +1,10 @@
 # To build an image of app with (example) my-forum-app name:
-  docker build -t my-forum-app .
+  docker build -t my-forum-app .             or:
+  docker image build -t my-forum-app .  
 
 # Run the Docker container:
-  docker run -p 8080:8080 my-forum-app
+  docker run -p 8080:8080 my-forum-app       or: 
+  docker container run -p 8080:8080 my-forum-app
 
 # Lists running containers
   docker ps -q
@@ -59,6 +61,9 @@ INSERT INTO users (id, email, username, password) VALUES
 INSERT INTO posts (id, title, content, category, created_at) VALUES
 ('post1', 'Post Title 1', 'Post Content 1', 'Category1', '2024-02-08 22:50:31'),
 ('post2', 'Post Title 2', 'Post Content 2', 'Category2', '2024-02-08 22:51:31');
+
+-- Delete particular post
+DELETE FROM posts WHERE id = 'ed076ebf-f872-4473-925b-89fe6fddaed7';
 
 -- Add a comment
 INSERT INTO comments (id, post_id, content, created_at) VALUES
