@@ -99,7 +99,7 @@ This project will help you learn about:
 ###
     $go run main.go
 
-To run with docker:
+    To run with docker:
     $docker image build -t my-forum-app .  
     $docker container run -p 8080:8080 my-forum-app
 
