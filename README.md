@@ -97,12 +97,11 @@ This project will help you learn about:
 
 ## To run the app:
 ###
-1. 
     $go run main.go
 
-1. To run with docker:
+To run with docker:
     $docker image build -t my-forum-app .  
     $docker container run -p 8080:8080 my-forum-app
 
-2. Open your web browser and navigate to http://localhost:8080.
-3. Register user > Login > ...
+Open your web browser and navigate to http://localhost:8080.
+Register user > Login > ...
