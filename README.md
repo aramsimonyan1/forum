@@ -12,7 +12,6 @@ In order to store the data in your forum (like users, posts, comments, etc.) you
 
 You must use at least one SELECT, one CREATE and one INSERT queries.
 
-To know more about SQLite you can check the SQLite page.
 
 
 ### Authentication
@@ -98,6 +97,12 @@ This project will help you learn about:
 
 ## To run the app:
 ###
-1. $go run main.go
+1. 
+    $go run main.go
+
+1. To run with docker:
+    $docker image build -t my-forum-app .  
+    $docker container run -p 8080:8080 my-forum-app
+
 2. Open your web browser and navigate to http://localhost:8080.
 3. Register user > Login > ...
