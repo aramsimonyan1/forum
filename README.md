@@ -1,4 +1,4 @@
-# forum
+# Go-based forum application
 
 ## Objectives
     This project consists in creating a web forum that allows:
