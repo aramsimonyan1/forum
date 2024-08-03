@@ -1,7 +1,7 @@
 # forum
     1. go run main.go
-    2. open browser with url: localhost:8080
-    3. register user > login > ...
+    2. Open your web browser and navigate to http://localhost:8080.
+    3. Register user > Login > ...
 
 ## Objectives
     This project consists in creating a web forum that allows:
@@ -73,7 +73,6 @@ For the forum project you must use Docker. You can read about docker basics in t
     You must handle website errors, HTTP status.
     You must handle all sort of technical errors.
     The code must respect the good practices.
-    It is recommended to have test files for unit testing.
 
 
 
@@ -85,6 +84,7 @@ For the forum project you must use Docker. You can read about docker basics in t
 
 You must not use use any frontend libraries or frameworks like React, Angular, Vue etc.
 
+###
 This project will help you learn about:
     The basics of web:
         HTML
