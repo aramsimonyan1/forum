@@ -103,5 +103,5 @@ This project will help you learn about:
     $docker image build -t my-forum-app .  
     $docker container run -p 8080:8080 my-forum-app
 
-Open your web browser and navigate to http://localhost:8080.
-Register user > Login > ...
+    Open your web browser and navigate to http://localhost:8080.
+    Register user > Login > ...
